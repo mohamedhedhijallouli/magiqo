@@ -1,0 +1,289 @@
+[
+  {
+    "key": "hist_crown",
+    "riddle_type": "histoire",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "国王或王后戴在头上、镶有珠宝的东西叫什么？",
+    "answer": "王冠",
+    "hint": "牙齿上也有一种同名的东西！"
+  },
+  {
+    "key": "hist_sunking",
+    "riddle_type": "histoire",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "哪位法国国王被称为「太阳王」？",
+    "answer": "路易十四",
+    "alt_answers": [
+      "路易14"
+    ],
+    "hint": "他建造了凡尔赛宫。"
+  },
+  {
+    "key": "geo_capital_fr",
+    "riddle_type": "geographie",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "法国的首都是哪里？",
+    "answer": "巴黎",
+    "choices": [
+      "巴黎",
+      "里昂",
+      "马赛",
+      "波尔多"
+    ]
+  },
+  {
+    "key": "geo_desert",
+    "riddle_type": "geographie",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "世界上最大的炎热沙漠是哪个？",
+    "answer": "撒哈拉沙漠",
+    "alt_answers": [
+      "撒哈拉"
+    ],
+    "hint": "它位于北非。"
+  },
+  {
+    "key": "math_multiply",
+    "riddle_type": "mathematiques",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "12 × 12 等于多少？",
+    "answer": "144"
+  },
+  {
+    "key": "math_sqrt",
+    "riddle_type": "mathematiques",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "169 的平方根是多少？",
+    "answer": "13"
+  },
+  {
+    "key": "culture_leapyear",
+    "riddle_type": "culture_generale",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "闰年有多少天？",
+    "answer": "366",
+    "hint": "二月多一天。"
+  },
+  {
+    "key": "culture_sky",
+    "riddle_type": "culture_generale",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "晴天的天空是什么颜色？",
+    "answer": "蓝色"
+  },
+  {
+    "key": "sci_spider",
+    "riddle_type": "sciences",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "蜘蛛有几条腿？",
+    "answer": "8",
+    "alt_answers": [
+      "八",
+      "八条"
+    ]
+  },
+  {
+    "key": "sci_redplanet",
+    "riddle_type": "sciences",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "哪颗行星被称为「红色星球」？",
+    "answer": "火星",
+    "choices": [
+      "火星",
+      "金星",
+      "木星",
+      "土星"
+    ]
+  },
+  {
+    "key": "logic_towel",
+    "riddle_type": "logique",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "我越干燥，就变得越湿。我是什么？",
+    "answer": "毛巾"
+  },
+  {
+    "key": "logic_comb",
+    "riddle_type": "logique",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "什么东西有齿却从不咬人？",
+    "answer": "梳子"
+  },
+  {
+    "key": "lang_home_plural",
+    "riddle_type": "francais",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "choice",
+    "question": "「猫」用法语怎么说？",
+    "answer": "chat",
+    "choices": [
+      "chat",
+      "maison",
+      "chien",
+      "soleil"
+    ]
+  },
+  {
+    "key": "lang_home_antonym",
+    "riddle_type": "francais",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "「谢谢」用法语怎么说？",
+    "answer": "merci"
+  },
+  {
+    "key": "lang_foreign_library",
+    "riddle_type": "anglais",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "「图书馆」用英语怎么说？",
+    "answer": "library"
+  },
+  {
+    "key": "lang_foreign_cat",
+    "riddle_type": "anglais",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "「猫」用英语怎么说？",
+    "answer": "cat"
+  },
+  {
+    "key": "word_castle",
+    "riddle_type": "lettres_mots",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "什么建筑高大坚固，是古代国王居住的地方？",
+    "answer": "城堡"
+  },
+  {
+    "key": "word_anagram_dog",
+    "riddle_type": "lettres_mots",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "什么动物摇尾巴、爱吃骨头，是人类最好的朋友？",
+    "answer": "狗"
+  },
+  {
+    "key": "code_binary",
+    "riddle_type": "codage",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "计算机的二进制系统使用几个不同的数字？",
+    "answer": "2",
+    "alt_answers": [
+      "两个",
+      "二"
+    ],
+    "hint": "0和1！"
+  },
+  {
+    "key": "code_pc",
+    "riddle_type": "codage",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "计算机领域中的缩写「PC」是什么意思？",
+    "answer": "个人电脑",
+    "alt_answers": [
+      "个人计算机"
+    ]
+  },
+  {
+    "key": "char_pirate",
+    "riddle_type": "personnage",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "我在海上航行寻找宝藏，眼睛上戴着眼罩。我是谁？",
+    "answer": "海盗"
+  },
+  {
+    "key": "char_squire",
+    "riddle_type": "personnage",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "在国王身边协助他治理国家的重要顾问叫什么？",
+    "answer": "大臣"
+  },
+  {
+    "key": "fantasy_siren",
+    "riddle_type": "fantastique",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "在希腊传说中，半人半鸟的生物用歌声引诱水手，这是什么？",
+    "answer": "海妖",
+    "alt_answers": [
+      "塞壬"
+    ]
+  },
+  {
+    "key": "fantasy_dragon",
+    "riddle_type": "fantastique",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "哪种传说中的生物会喷火并守护宝藏？",
+    "answer": "龙",
+    "choices": [
+      "龙",
+      "地精",
+      "独角兽",
+      "巨魔"
+    ]
+  },
+  {
+    "key": "cine_cinema",
+    "riddle_type": "cinematographique",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "人们在大屏幕上看电影的地方叫什么？",
+    "answer": "电影院"
+  },
+  {
+    "key": "cine_action",
+    "riddle_type": "cinematographique",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "导演喊什么词来开始拍摄？",
+    "answer": "开始",
+    "alt_answers": [
+      "action",
+      "开拍"
+    ]
+  }
+]

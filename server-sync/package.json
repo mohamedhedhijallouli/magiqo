@@ -1,0 +1,17 @@
+{
+  "name": "server-sync",
+  "version": "1.0.0",
+  "description": "Résout le problème *\"je n'ai pas les mêmes données sur un autre appareil\"* : MagiQo stocke normalement tout dans le `localStorage` du navigateur (voir `src/lib/db.js`), qui n'est jamais partagé entre appareils. Ce serveur ajoute une synchronisation réelle, par code de licence.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
