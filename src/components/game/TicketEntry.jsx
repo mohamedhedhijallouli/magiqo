@@ -8,12 +8,13 @@ import { Input, Label } from "@/components/ui/Field";
 import Button from "@/components/ui/Button";
 import QrScannerModal from "@/components/shared/QrScannerModal";
 
-// Étape "ticket joueur" (V19) : avant de saisir le code du parcours, le
-// joueur scanne (ou tape) le code unique de son ticket, remis à l'avance
-// par le Maître du Jeu (voir TicketsPanel). Un ticket ne peut servir qu'une
-// seule fois, ce qui fait naturellement respecter le quota de joueurs de la
-// licence.
-export default function TicketEntry({ onValidated }) {
+// Étape "ticket joueur" (V19) : une fois le parcours identifié (voir
+// Play.jsx), et seulement si la licence de son Maître du Jeu n'est pas
+// forfaitaire, le joueur scanne (ou tape) le code unique de son ticket,
+// remis à l'avance par le Maître du Jeu (voir TicketsPanel). Un ticket ne
+// peut servir qu'une seule fois, ce qui fait naturellement respecter le
+// quota de joueurs de la licence.
+export default function TicketEntry({ onValidated, licenseCode }) {
   const { t } = useLanguage();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -25,7 +26,9 @@ export default function TicketEntry({ onValidated }) {
     if (!candidate) return;
     setError("");
     setLoading(true);
-    const tickets = await PlayerTickets.filter({ code: candidate });
+    // Scopé à la licence du parcours déjà identifié (voir Play.jsx) : un
+    // ticket généré par une autre organisation ne doit pas être accepté ici.
+    const tickets = await PlayerTickets.filter({ code: candidate, license_code: licenseCode });
     await new Promise((r) => setTimeout(r, 300));
     setLoading(false);
     const ticket = tickets[0];

@@ -17,6 +17,7 @@ import VictoryScreen from "@/components/game/VictoryScreen";
 import { resolveStops, resolveRiddles, RiddleTypes, Quests, PlayerTickets } from "@/lib/db";
 import { calculateScore, getBadge } from "@/lib/gameData";
 import { useLanguage } from "@/lib/LanguageContext";
+import { validateAnyLicense, isUnlimited } from "@/lib/license";
 import PhotoChallenge from "@/components/game/PhotoChallenge";
 import { WorldThemeProvider } from "@/lib/WorldThemeContext";
 import { getWorld } from "@/lib/worlds";
@@ -109,9 +110,15 @@ function normalizeStop(stop) {
 }
 
 export default function Play() {
-  const { t } = useLanguage();
-  const [phase, setPhase] = useState("ticket"); // ticket | code | name | riddles | object | reveal | victory
-  const [ticketRequired, setTicketRequired] = useState(null); // null = checking, true/false once known
+  const { t, setLang } = useLanguage();
+  // Le joueur saisit d'abord le code du parcours ("code") : c'est ce qui
+  // permet de déterminer la langue de jeu (héritée du tuteur propriétaire
+  // du parcours) et si un ticket joueur est requis, AVANT de demander quoi
+  // que ce soit d'autre. Le ticket n'est ensuite demandé que si la licence
+  // du Maître du Jeu n'est pas forfaitaire (joueurs illimités) — voir
+  // handleParcoursSelect.
+  const [phase, setPhase] = useState("code"); // code | ticket | name | riddles | object | reveal | victory
+  const [ticketRequired, setTicketRequired] = useState(false);
   const [parent, setParent] = useState(null);
   const [parcours, setParcoursData] = useState(null);
   const [player, setPlayer] = useState(null);
@@ -126,24 +133,8 @@ export default function Play() {
   const [errorsSinceSuspend, setErrorsSinceSuspend] = useState(0);
   const startRef = useRef(null);
 
-  useEffect(() => {
-    // Rétrocompatibilité : si le Maître du Jeu n'a jamais généré de tickets
-    // joueurs (fonctionnalité optionnelle), on saute directement à la
-    // saisie du code du parcours plutôt que de bloquer le jeu sur une étape
-    // que personne n'a configurée.
-    (async () => {
-      const tickets = await PlayerTickets.list();
-      if (tickets.length === 0) {
-        setTicketRequired(false);
-        setPhase("code");
-      } else {
-        setTicketRequired(true);
-      }
-    })();
-  }, []);
-
   function handleTicketValidated() {
-    setPhase("code");
+    setPhase("name");
   }
 
   useEffect(() => {
@@ -174,7 +165,33 @@ export default function Play() {
     setParcoursData(foundParcours);
     setStops(resolved.map(normalizeStop));
     setRiddleSet(resolvedRiddles.map((r) => ({ ...r, category: typeLabel(r.riddle_type) })));
-    setPhase("name");
+
+    // La langue de jeu est celle du tuteur propriétaire du parcours — c'est
+    // tout l'intérêt de connaître le parcours avant de demander quoi que ce
+    // soit d'autre au joueur (nom, ticket...) : le reste de la session se
+    // déroule dans la bonne langue dès la prochaine étape.
+    if (foundParent?.language) setLang(foundParent.language.toLowerCase());
+
+    // Le ticket joueur n'est requis que pour les licences NON forfaitaires
+    // (nombre de joueurs limité — voir lib/license.js) qui ont
+    // effectivement généré des tickets pour cette organisation. Une licence
+    // forfaitaire (joueurs illimités) n'a pas besoin de ce contrôle, et un
+    // Maître du Jeu qui n'a jamais utilisé cette fonctionnalité optionnelle
+    // ne doit pas se retrouver bloqué dessus.
+    let needsTicket = false;
+    if (foundParcours.license_code) {
+      try {
+        const licenseCheck = await validateAnyLicense(foundParcours.license_code);
+        if (licenseCheck.valid && !isUnlimited(licenseCheck.maxPlayers)) {
+          const tickets = await PlayerTickets.filter({ license_code: foundParcours.license_code });
+          needsTicket = tickets.length > 0;
+        }
+      } catch {
+        needsTicket = false; // en cas de doute, ne pas bloquer le joueur
+      }
+    }
+    setTicketRequired(needsTicket);
+    setPhase(needsTicket ? "ticket" : "name");
   }
 
   // V26 — Les devinettes sont désormais un bloc indépendant des éléments à
@@ -268,7 +285,7 @@ export default function Play() {
   }
 
   function replay() {
-    setPhase(ticketRequired ? "ticket" : "code");
+    setPhase("code");
     setParent(null);
     setParcoursData(null);
     setPlayer(null);
@@ -308,17 +325,17 @@ export default function Play() {
 
       <div className="relative z-10 px-4 pb-16 flex flex-col items-center">
         <AnimatePresence mode="wait">
-          {phase === "ticket" && (
-            <motion.div key="ticket" variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full flex flex-col items-center">
-              <h1 className="font-display text-2xl text-gold-bright mb-8 text-center">{t("play_join")}</h1>
-              <TicketEntry onValidated={handleTicketValidated} />
-            </motion.div>
-          )}
-
           {phase === "code" && (
             <motion.div key="code" variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full flex flex-col items-center">
               <h1 className="font-display text-2xl text-gold-bright mb-8 text-center">{t("play_join")}</h1>
               <ParcoursCodeEntry onSelect={handleParcoursSelect} />
+            </motion.div>
+          )}
+
+          {phase === "ticket" && (
+            <motion.div key="ticket" variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full flex flex-col items-center">
+              <h1 className="font-display text-2xl text-gold-bright mb-8 text-center">{t("play_join")}</h1>
+              <TicketEntry onValidated={handleTicketValidated} licenseCode={parcours?.license_code} />
             </motion.div>
           )}
 

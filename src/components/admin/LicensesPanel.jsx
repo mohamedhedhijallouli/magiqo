@@ -188,11 +188,7 @@ export default function LicensesPanel() {
             </div>
           )}
 
-          <p className="text-xs text-muted mb-4 flex items-start gap-1.5">
-            <Sparkles size={12} className="text-arcane shrink-0 mt-0.5" /> {t("lic_secret_note")}
-          </p>
-
-          {/* Type de licence */}
+          {/* Types de licence */}
           <div className="mb-4">
             <Label>{t("lic_type")}</Label>
             <div className="grid grid-cols-2 gap-2">
