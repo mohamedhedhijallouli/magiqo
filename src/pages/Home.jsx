@@ -73,7 +73,7 @@ const ROLE_MODAL_TEXTS = {
 function CenteredLanguagePicker() {
   const { lang, setLang, languages } = useLanguage();
   return (
-    <div className="flex flex-nowrap justify-center items-center gap-2 sm:gap-3 w-full max-w-5xl mx-auto overflow-hidden py-2 px-2">
+    <div className="flex flex-wrap sm:flex-nowrap justify-center items-center gap-2 sm:gap-3 w-full max-w-5xl mx-auto py-2 px-2">
       {languages.map((l) => (
         <button
           key={l.code}
@@ -100,13 +100,13 @@ export default function Home() {
   const modalText = ROLE_MODAL_TEXTS[lang] || ROLE_MODAL_TEXTS.fr;
 
   return (
-    <div className="relative overflow-hidden h-screen w-screen">
+    <div className="relative overflow-x-hidden min-h-screen w-screen">
       {/* Animation des Étoiles */}
       <StarsBackground />
 
       {/* ---- Hero / Écran d'accueil unique ---- */}
       <section
-        className="relative z-10 flex flex-col items-center justify-center px-6 h-full text-center"
+        className="relative z-10 flex flex-col items-center justify-center px-6 min-h-screen py-10 text-center"
         style={{
           backgroundImage: "url(/images/hero-background.webp)",
           backgroundSize: "cover",
