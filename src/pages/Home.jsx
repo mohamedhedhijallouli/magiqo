@@ -37,7 +37,7 @@ const ROLE_MODAL_TEXTS = {
     player: "Jugador",
     playerDesc: "Únete a la aventura",
   },
-  ar: {
+  tn: {
     title: "اختر ملفك الشخصي",
     subtitle: "الوصول إلى المساحة المناسبة لدورك",
     master: "سيد اللعبة",
@@ -47,7 +47,7 @@ const ROLE_MODAL_TEXTS = {
     player: "لاعب",
     playerDesc: "انضم إلى المغامرة",
   },
-  cn: {
+  zh: {
     title: "选择您的身份",
     subtitle: "访问适合您角色的区域",
     master: "游戏导师",
