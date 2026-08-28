@@ -78,6 +78,16 @@ function toRow(collection, obj) {
 function matches(row, filter) {
   return Object.entries(filter).every(([k, v]) => {
     if (v === undefined) return true;
+    if (k === "license_code") {
+      // Filet de sécurité pour les données créées AVANT l'introduction du
+      // cloisonnement par licence (migration Supabase) : ces lignes n'ont
+      // aucun license_code enregistré. Sans ce cas particulier, elles
+      // deviendraient invisibles pour tout le monde dès qu'un écran filtre
+      // par licence — silencieusement, sans erreur, ce qui est pire qu'un
+      // plantage. On les traite comme "non réclamées" et on les montre à la
+      // licence actuellement active plutôt que de les faire disparaître.
+      return row.license_code === v || !row.license_code;
+    }
     return row[k] === v;
   });
 }

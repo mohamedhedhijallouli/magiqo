@@ -62,7 +62,7 @@ export default function AnimalEditor({ open, onClose, animal, types, existingCod
   async function handleSave() {
     setSaving(true);
     try {
-      if (animal) await Animals.update(animal.id, form);
+      if (animal) await Animals.update(animal.id, { ...form, license_code: animal.license_code || getAdminActiveLicenseCode() });
       else await Animals.create({ ...form, license_code: getAdminActiveLicenseCode() });
       toast(t("common_saved"));
       onClose(true);

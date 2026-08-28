@@ -66,7 +66,7 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
     setSaving(true);
     try {
       const payload = { ...form, alt_answers: (form.alt_answers || []).filter((a) => a.trim()) };
-      if (riddle) await Riddles.update(riddle.id, payload);
+      if (riddle) await Riddles.update(riddle.id, { ...payload, license_code: riddle.license_code || getAdminActiveLicenseCode() });
       else await Riddles.create({ ...payload, license_code: getAdminActiveLicenseCode() });
       toast(t("common_saved"));
       onClose(true);

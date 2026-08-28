@@ -137,7 +137,7 @@ export default function PlaceEditor({ open, onClose, place, placeTypes, places, 
         lat: form.lat === "" ? null : Number(form.lat),
         lng: form.lng === "" ? null : Number(form.lng),
       };
-      if (place) await Places.update(place.id, payload);
+      if (place) await Places.update(place.id, { ...payload, license_code: place.license_code || getAdminActiveLicenseCode() });
       else await Places.create({ ...payload, license_code: getAdminActiveLicenseCode() });
       toast(t("common_saved"));
       onClose(true);

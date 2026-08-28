@@ -84,7 +84,7 @@ export default function ObjectEditor({ open, onClose, object, categories, existi
     setSaving(true);
     try {
       if (object) {
-        await GameObjects.update(object.id, form);
+        await GameObjects.update(object.id, { ...form, license_code: object.license_code || getAdminActiveLicenseCode() });
       } else {
         await GameObjects.create({ ...form, license_code: getAdminActiveLicenseCode() });
       }
