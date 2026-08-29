@@ -117,13 +117,16 @@ export default function Play() {
   // que ce soit d'autre. Le ticket n'est ensuite demandé que si la licence
   // du Maître du Jeu n'est pas forfaitaire (joueurs illimités) — voir
   // handleParcoursSelect.
-  const [phase, setPhase] = useState("code"); // code | ticket | name | riddles | object | reveal | victory
+  const [phase, setPhase] = useState("code"); // code | ticket | name | riddle | object | reveal | victory
   const [ticketRequired, setTicketRequired] = useState(false);
   const [parent, setParent] = useState(null);
   const [parcours, setParcoursData] = useState(null);
   const [player, setPlayer] = useState(null);
-  const [stops, setStops] = useState([]);
-  const [riddleSet, setRiddleSet] = useState([]);
+  // Séquence de jeu unifiée : mélange librement devinettes et objets/lieux/
+  // animaux, dans l'ordre choisi par le Maître du Jeu au moment de la
+  // création du parcours (ex : 1 devinette → 2 lieux → 3 devinettes...).
+  // Chaque entrée : { kind: "stop" | "riddle", data }.
+  const [sequence, setSequence] = useState([]);
   const [stepIndex, setStepIndex] = useState(0);
 
   const [elapsed, setElapsed] = useState(0);
@@ -161,10 +164,32 @@ export default function Play() {
       RiddleTypes.list(),
     ]);
     const typeLabel = (slug) => riddleTypes.find((rt) => rt.slug === slug)?.label || "";
+    const stopsById = new Map(resolved.map((o) => [o.id, normalizeStop(o)]));
+    const riddlesById = new Map(resolvedRiddles.map((r) => [r.id, { ...r, category: typeLabel(r.riddle_type) }]));
+
+    // Ordre de jeu : celui choisi dans le Créateur de Parcours
+    // (foundParcours.sequence). Repli pour les parcours créés AVANT
+    // l'introduction de l'ordonnancement combiné : toutes les devinettes
+    // d'abord, puis tous les objets/lieux/animaux — comportement
+    // strictement identique à l'ancien système, rien ne change pour eux.
+    const rawSequence =
+      foundParcours.sequence?.length > 0
+        ? foundParcours.sequence
+        : [
+            ...(foundParcours.riddle_ids || []).map((id) => ({ type: "riddle", id })),
+            ...(foundParcours.object_ids || []).map((id) => ({ type: "stop", id })),
+          ];
+
+    const builtSequence = rawSequence
+      .map((entry) => {
+        if (entry.type === "riddle") return riddlesById.has(entry.id) ? { kind: "riddle", data: riddlesById.get(entry.id) } : null;
+        return stopsById.has(entry.id) ? { kind: "stop", data: stopsById.get(entry.id) } : null;
+      })
+      .filter(Boolean);
+
     setParent(foundParent);
     setParcoursData(foundParcours);
-    setStops(resolved.map(normalizeStop));
-    setRiddleSet(resolvedRiddles.map((r) => ({ ...r, category: typeLabel(r.riddle_type) })));
+    setSequence(builtSequence);
 
     // La langue de jeu est celle du tuteur propriétaire du parcours — c'est
     // tout l'intérêt de connaître le parcours avant de demander quoi que ce
@@ -194,23 +219,11 @@ export default function Play() {
     setPhase(needsTicket ? "ticket" : "name");
   }
 
-  // V26 — Les devinettes sont désormais un bloc indépendant des éléments à
-  // trouver, choisi une fois pour toutes à la création du parcours : elles
-  // sont jouées en un seul bloc, avant les étapes objets/animaux/lieux,
-  // plutôt que d'être intercalées étape par étape selon le niveau du joueur.
   function handlePlayerSubmit({ name, level }) {
     setPlayer({ name, level });
     setStepIndex(0);
-    setPhase(riddleSet.length > 0 ? "riddles" : "object");
+    setPhase(sequence[0]?.kind === "riddle" ? "riddle" : "object");
     startRef.current = Date.now();
-  }
-
-  async function handleRiddlesDone() {
-    if (stops.length > 0) {
-      setPhase("object");
-    } else {
-      await finishQuest();
-    }
   }
 
   const applyPenalty = useCallback(
@@ -241,6 +254,19 @@ export default function Play() {
     applyPenalty(parcours.penalty_per_wrong_riddle_seconds || 15);
   }
 
+  // Une devinette résolue (bonne réponse ou chrono expiré) déclenche la
+  // révélation UNIQUEMENT si elle porte une photo (comme demandé : "comme
+  // les objets, les lieux et les animaux") ; sinon on avance directement à
+  // l'étape suivante, sans écran intermédiaire.
+  function handleRiddleResolved() {
+    const current = sequence[stepIndex];
+    if (current?.data?.image_url) {
+      setPhase("reveal");
+    } else {
+      goNextStep();
+    }
+  }
+
   function handleCodeCorrect() {
     // Reward moment: the real photo is hidden throughout the riddle and only
     // revealed once the code has actually been solved.
@@ -249,13 +275,14 @@ export default function Play() {
 
   async function finishQuest() {
     const totalTime = Math.round((Date.now() - startRef.current) / 1000);
-    const score = calculateScore(totalTime, penaltyCount, stops.length);
+    const score = calculateScore(totalTime, penaltyCount, sequence.length);
     const badge = getBadge(score);
+    const discoveredStopIds = sequence.filter((s) => s.kind === "stop").map((s) => s.data.id);
     await Quests.create({
       name: parcours.magic_name || parcours.name,
       player_name: player.name,
       difficulty: player.level,
-      selected_objects: stops.map((o) => o.id),
+      selected_objects: discoveredStopIds,
       status: "completed",
       started_at: new Date(startRef.current).toISOString(),
       completed_at: new Date().toISOString(),
@@ -263,7 +290,7 @@ export default function Play() {
       penalty_count: penaltyCount,
       score,
       badge,
-      current_step: stops.length,
+      current_step: sequence.length,
       parent_code: parent.parent_code,
       parcours_id: parcours.id,
       // Le parcours peut appartenir à une licence différente de celle
@@ -275,10 +302,10 @@ export default function Play() {
   }
 
   async function goNextStep() {
-    if (stepIndex + 1 < stops.length) {
+    if (stepIndex + 1 < sequence.length) {
       const next = stepIndex + 1;
       setStepIndex(next);
-      setPhase("object");
+      setPhase(sequence[next].kind === "riddle" ? "riddle" : "object");
     } else {
       await finishQuest();
     }
@@ -289,8 +316,7 @@ export default function Play() {
     setParent(null);
     setParcoursData(null);
     setPlayer(null);
-    setStops([]);
-    setRiddleSet([]);
+    setSequence([]);
     setStepIndex(0);
     setElapsed(0);
     setPenaltyCount(0);
@@ -298,7 +324,9 @@ export default function Play() {
     setErrorsSinceSuspend(0);
   }
 
-  const currentStop = stops[stepIndex];
+  const currentEntry = sequence[stepIndex];
+  const currentStop = currentEntry?.kind === "stop" ? currentEntry.data : null;
+  const currentRiddle = currentEntry?.kind === "riddle" ? currentEntry.data : null;
   const world = getWorld(parcours?.world);
   const archetype = ARCHETYPE_COMPONENTS[world.interfaceArchetype];
   const BackgroundComp = archetype?.Background || StarsBackground;
@@ -307,6 +335,13 @@ export default function Play() {
   const ActiveRevealCard = archetype?.RevealCardVariant || RevealCard;
   const ActiveVictoryScreen = archetype?.VictoryScreenVariant || VictoryScreen;
   const totalTimeForVictory = startRef.current ? Math.round((Date.now() - startRef.current) / 1000) : 0;
+  // Une devinette avec photo se révèle exactement comme un objet/lieu/animal :
+  // on construit un "stop" éphémère à partir de la devinette pour réutiliser
+  // tel quel le même ActiveRevealCard (même archétype, même habillage).
+  const revealSubject =
+    currentEntry?.kind === "riddle"
+      ? { displayName: currentRiddle.answer || currentRiddle.question, real_name: "", emoji: "❓", image_url: currentRiddle.image_url }
+      : currentStop;
 
   return (
     // Le World n'est connu qu'une fois le parcours chargé (handleParcoursSelect) ;
@@ -345,9 +380,9 @@ export default function Play() {
             </motion.div>
           )}
 
-          {phase === "riddles" && riddleSet.length > 0 && (
+          {phase === "riddle" && currentRiddle && (
             <motion.div
-              key="riddles-block"
+              key={`riddle-${stepIndex}`}
               variants={phaseVariants}
               initial="initial"
               animate="animate"
@@ -357,8 +392,10 @@ export default function Play() {
             >
               <Timer elapsed={elapsed} penaltyCount={penaltyCount} suspended={suspended} suspendedRemaining={suspendedRemaining} />
               <RiddleStep
-                riddles={riddleSet}
-                onDone={handleRiddlesDone}
+                riddle={currentRiddle}
+                stepNumber={stepIndex + 1}
+                totalSteps={sequence.length}
+                onResolved={handleRiddleResolved}
                 onWrong={handleWrongRiddle}
                 timeLimitSeconds={parcours.riddle_time_limit_seconds || 0}
               />
@@ -381,7 +418,7 @@ export default function Play() {
                   gameObject={currentStop}
                   difficulty={player.level}
                   stepNumber={stepIndex + 1}
-                  totalSteps={stops.length}
+                  totalSteps={sequence.length}
                   onHintUsed={handleHintUsed}
                 />
                 {!suspended && (
@@ -395,16 +432,16 @@ export default function Play() {
             </motion.div>
           )}
 
-          {phase === "reveal" && currentStop && (
+          {phase === "reveal" && currentEntry && (
             <motion.div key={`reveal-${stepIndex}`} variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full">
-              <ActiveRevealCard stop={currentStop} onContinue={goNextStep} />
+              <ActiveRevealCard stop={revealSubject} onContinue={goNextStep} />
             </motion.div>
           )}
 
           {phase === "victory" && (
             <motion.div key="victory" variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.4 }} className="w-full">
               <ActiveVictoryScreen
-                result={{ totalTime: totalTimeForVictory, penaltyCount, score: calculateScore(totalTimeForVictory, penaltyCount, stops.length), badge: getBadge(calculateScore(totalTimeForVictory, penaltyCount, stops.length)) }}
+                result={{ totalTime: totalTimeForVictory, penaltyCount, score: calculateScore(totalTimeForVictory, penaltyCount, sequence.length), badge: getBadge(calculateScore(totalTimeForVictory, penaltyCount, sequence.length)) }}
                 onReplay={replay}
               />
             </motion.div>

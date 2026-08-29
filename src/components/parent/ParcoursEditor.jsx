@@ -14,7 +14,7 @@ import WorldPicker from "@/components/parent/WorldPicker";
 
 const EMPTY = {
   name: "", magic_name: "", description: "", access_code: "", age_group: "apprenti",
-  parcours_type: "", world: "grimoire", object_ids: [], riddle_ids: [], is_active: true, time_limit_minutes: 0,
+  parcours_type: "", world: "grimoire", object_ids: [], riddle_ids: [], sequence: [], is_active: true, time_limit_minutes: 0,
   penalty_per_hint_seconds: 60, penalty_per_wrong_code_seconds: 20,
   penalty_per_wrong_riddle_seconds: 15, riddle_time_limit_seconds: 0,
   suspension_after_errors: 0, suspension_duration_seconds: 15,
@@ -98,9 +98,19 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
 
   useEffect(() => {
     if (open) {
+      // Repli pour un parcours créé AVANT l'introduction de l'ordonnancement
+      // combiné : reconstitue une séquence par défaut (toutes les devinettes
+      // d'abord, puis tous les objets/lieux/animaux) à partir des anciennes
+      // listes séparées — l'admin peut ensuite la réordonner librement.
+      const legacySequence = parcours && !(parcours.sequence?.length > 0)
+        ? [
+            ...(parcours.riddle_ids || []).map((id) => ({ type: "riddle", id })),
+            ...(parcours.object_ids || []).map((id) => ({ type: "stop", id })),
+          ]
+        : null;
       setForm(
         parcours
-          ? { ...EMPTY, ...parcours }
+          ? { ...EMPTY, ...parcours, sequence: parcours.sequence?.length > 0 ? parcours.sequence : legacySequence }
           : { ...EMPTY, parcours_type: parcoursTypes[0]?.slug || "", access_code: generateAccessCode(), ...parentInfo }
       );
       setRiddleLangFilter(tutorLanguage ? tutorLanguage.toUpperCase() : "");
@@ -153,9 +163,14 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
 
   // Les arrêts déjà choisis sont TOUJOURS résolus depuis le pool complet
   // (aucun filtre par type) : rien ne disparaît jamais silencieusement.
+  // Résolus depuis la séquence combinée (ordre de jeu réel), pas depuis
+  // object_ids seul — voir la note sur l'ordonnancement plus haut.
+  const stopIds = useMemo(() => form.sequence.filter((e) => e.type === "stop").map((e) => e.id), [form.sequence]);
+  const riddleIds = useMemo(() => form.sequence.filter((e) => e.type === "riddle").map((e) => e.id), [form.sequence]);
+
   const selectedStops = useMemo(
-    () => form.object_ids.map((id) => pool.find((p) => p.id === id)).filter(Boolean),
-    [form.object_ids, pool]
+    () => stopIds.map((id) => pool.find((p) => p.id === id)).filter(Boolean),
+    [stopIds, pool]
   );
 
   // Seule la liste des NOUVEAUX éléments proposés à l'ajout est filtrée par
@@ -164,12 +179,59 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
     () =>
       pool.filter(
         (p) =>
-          !form.object_ids.includes(p.id) &&
+          !stopIds.includes(p.id) &&
           (!activeKind || p.kind === activeKind) &&
           (!search || p.search.toLowerCase().includes(search.toLowerCase()))
       ),
-    [pool, form.object_ids, search, activeKind]
+    [pool, stopIds, search, activeKind]
   );
+
+  // A selected place that other places point to (parent_place_id) can be
+  // "decomposed": insert all of its sub-places into the trail in one click.
+  function childrenOf(stopId) {
+    return places.filter((p) => p.parent_place_id === stopId);
+  }
+
+  function addStop(id) {
+    set("sequence", [...form.sequence, { type: "stop", id }]);
+  }
+  function removeStop(id) {
+    set("sequence", form.sequence.filter((e) => !(e.type === "stop" && e.id === id)));
+  }
+  function decompose(stopId) {
+    const kids = childrenOf(stopId).map((k) => k.id).filter((id) => !stopIds.includes(id));
+    if (kids.length === 0) return;
+    const idx = form.sequence.findIndex((e) => e.type === "stop" && e.id === stopId);
+    const items = [...form.sequence];
+    items.splice(idx + 1, 0, ...kids.map((id) => ({ type: "stop", id })));
+    set("sequence", items);
+    toast(t("pe_decompose_done"));
+  }
+
+  // Liste combinée et ordonnable : mêle librement arrêts (objets/animaux/
+  // lieux) et devinettes, dans l'ordre exact où ils seront joués — voir
+  // Play.jsx qui suit cette même séquence. Faire glisser une devinette
+  // au-dessus ou en dessous d'un arrêt les entrelace directement (ex : 1
+  // devinette → 2 lieux → 3 devinettes).
+  const orderedSequence = useMemo(
+    () =>
+      form.sequence
+        .map((entry) =>
+          entry.type === "riddle"
+            ? { ...entry, data: riddles.find((r) => r.id === entry.id) }
+            : { ...entry, data: pool.find((p) => p.id === entry.id) }
+        )
+        .filter((e) => e.data),
+    [form.sequence, riddles, pool]
+  );
+
+  function onDragEnd(result) {
+    if (!result.destination) return;
+    const items = Array.from(form.sequence);
+    const [moved] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, moved);
+    set("sequence", items);
+  }
 
   // Comptage par famille pour le résumé de composition (§11 du cahier des
   // charges : "5 objets / 0 animaux / 2 lieux / 3 devinettes").
@@ -179,43 +241,13 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
     return counts;
   }, [selectedStops]);
 
-  // A selected place that other places point to (parent_place_id) can be
-  // "decomposed": insert all of its sub-places into the trail in one click.
-  function childrenOf(stopId) {
-    return places.filter((p) => p.parent_place_id === stopId);
-  }
-
-  function addStop(id) {
-    set("object_ids", [...form.object_ids, id]);
-  }
-  function removeStop(id) {
-    set("object_ids", form.object_ids.filter((x) => x !== id));
-  }
-  function decompose(stopId) {
-    const kids = childrenOf(stopId).map((k) => k.id).filter((id) => !form.object_ids.includes(id));
-    if (kids.length === 0) return;
-    const idx = form.object_ids.indexOf(stopId);
-    const items = [...form.object_ids];
-    items.splice(idx + 1, 0, ...kids);
-    set("object_ids", items);
-    toast(t("pe_decompose_done"));
-  }
-
-  function onDragEnd(result) {
-    if (!result.destination) return;
-    const items = Array.from(form.object_ids);
-    const [moved] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, moved);
-    set("object_ids", items);
-  }
-
   // ---- Devinettes du parcours -----------------------------------------
   // Les devinettes déjà choisies sont TOUJOURS résolues depuis la liste
   // complète (même logique que selectedStops) : rien ne disparaît si un
   // filtre change après coup.
   const selectedRiddles = useMemo(
-    () => form.riddle_ids.map((id) => riddles.find((r) => r.id === id)).filter(Boolean),
-    [form.riddle_ids, riddles]
+    () => riddleIds.map((id) => riddles.find((r) => r.id === id)).filter(Boolean),
+    [riddleIds, riddles]
   );
 
   const availableRiddles = useMemo(
@@ -223,20 +255,20 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
       riddles.filter(
         (r) =>
           r.is_active &&
-          !form.riddle_ids.includes(r.id) &&
+          !riddleIds.includes(r.id) &&
           r.age_group === form.age_group &&
           (!riddleTypeFilter || r.riddle_type === riddleTypeFilter) &&
           (!riddleLangFilter || (r.language || "").toUpperCase() === riddleLangFilter.toUpperCase()) &&
           (!riddleSearch || r.question.toLowerCase().includes(riddleSearch.toLowerCase()))
       ),
-    [riddles, form.riddle_ids, form.age_group, riddleTypeFilter, riddleLangFilter, riddleSearch]
+    [riddles, riddleIds, form.age_group, riddleTypeFilter, riddleLangFilter, riddleSearch]
   );
 
   function addRiddle(id) {
-    set("riddle_ids", [...form.riddle_ids, id]);
+    set("sequence", [...form.sequence, { type: "riddle", id }]);
   }
   function removeRiddle(id) {
-    set("riddle_ids", form.riddle_ids.filter((x) => x !== id));
+    set("sequence", form.sequence.filter((e) => !(e.type === "riddle" && e.id === id)));
   }
   function autoSelectRiddles() {
     const count = Math.max(0, Number(riddleAutoCount) || 0);
@@ -246,13 +278,22 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
       toast(t("pe_riddles_none_match"), "error");
       return;
     }
-    set("riddle_ids", [...form.riddle_ids, ...shuffled.map((r) => r.id)]);
+    set("sequence", [...form.sequence, ...shuffled.map((r) => ({ type: "riddle", id: r.id }))]);
   }
 
   async function handleSave() {
     setSaving(true);
     try {
-      const payload = { ...form, license_code: licenseCode };
+      // object_ids / riddle_ids restent dérivés de `sequence` (l'ordre de
+      // jeu réel) pour la rétrocompatibilité avec les écrans qui ne lisent
+      // que ces deux listes (compteurs dans ParcoursManager/PrintView,
+      // impression papier...) — voir la note en tête de fichier.
+      const payload = {
+        ...form,
+        object_ids: stopIds,
+        riddle_ids: riddleIds,
+        license_code: licenseCode,
+      };
       if (adminMode && !parcours) {
         payload.created_by_admin = true;
         // Un parcours du Maître du Jeu non associé à un tuteur précis n'a
@@ -367,27 +408,53 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
       </div>
 
       <div className="mb-6">
-        <Label>{activeKind ? t(KIND_LABELS[activeKind].stopsLabelKey) : t("pe_objects")}</Label>
-        <p className="text-xs text-muted mb-2">{t("pe_drag_hint")}</p>
+        <Label className="flex items-center gap-1.5"><Shuffle size={14} className="text-gold-bright" /> {t("pe_sequence_title")}</Label>
+        <p className="text-xs text-muted mb-2">{t("pe_sequence_hint")}</p>
         {tutorLanguage && (
           <p className="text-xs text-arcane mb-2 flex items-center gap-1">
             {LANGUAGES.find((l) => l.code.toLowerCase() === tutorLanguage.toLowerCase())?.flag}
             {t("pe_language_filter_hint").replace("{lang}", LANGUAGES.find((l) => l.code.toLowerCase() === tutorLanguage.toLowerCase())?.label || tutorLanguage)}
           </p>
         )}
-        {selectedStops.length === 0 ? (
+        {orderedSequence.length === 0 ? (
           <p className="text-muted text-sm py-4 text-center border border-dashed border-void-border rounded-xl">
-            {activeKind ? t(KIND_LABELS[activeKind].emptyKey) : t("pe_no_objects_selected")}
+            {t("pe_sequence_empty")}
           </p>
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="objs">
+            <Droppable droppableId="sequence">
               {(provided) => (
                 <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-col gap-2 mb-3">
-                  {selectedStops.map((o, i) => {
-                    const kids = o.kind === "place" ? childrenOf(o.id).filter((k) => !form.object_ids.includes(k.id)) : [];
+                  {orderedSequence.map((entry, i) => {
+                    if (entry.type === "riddle") {
+                      const r = entry.data;
+                      const level = LEVELS.find((l) => l.value === r.age_group);
+                      const typeInfo = riddleTypes.find((rt) => rt.slug === r.riddle_type);
+                      return (
+                        <Draggable key={`riddle-${r.id}`} draggableId={`riddle-${r.id}`} index={i}>
+                          {(dragProvided) => (
+                            <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} className="flex items-center gap-2 bg-void/50 border border-emerald-bright/20 rounded-xl px-3 py-2">
+                              <span {...dragProvided.dragHandleProps} className="text-muted cursor-grab">
+                                <GripVertical size={16} />
+                              </span>
+                              <HelpCircle size={14} className="text-emerald-bright shrink-0" />
+                              <span className="flex-1 text-sm text-parchment truncate">{r.question}</span>
+                              {r.image_url && <Badge color="gold">📷</Badge>}
+                              {typeInfo && <Badge color="arcane">{typeInfo.emoji} {taxonomyLabel(typeInfo, t)}</Badge>}
+                              {level && <Badge color={level.color}>{level.emoji}</Badge>}
+                              <Badge color="muted">❓ {i + 1}</Badge>
+                              <button onClick={() => removeRiddle(r.id)} className="text-muted hover:text-ember-bright shrink-0">
+                                <X size={15} />
+                              </button>
+                            </div>
+                          )}
+                        </Draggable>
+                      );
+                    }
+                    const o = entry.data;
+                    const kids = o.kind === "place" ? childrenOf(o.id).filter((k) => !stopIds.includes(k.id)) : [];
                     return (
-                      <Draggable key={o.id} draggableId={o.id} index={i}>
+                      <Draggable key={`stop-${o.id}`} draggableId={`stop-${o.id}`} index={i}>
                         {(dragProvided) => (
                           <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} className="flex flex-col gap-1.5 bg-void/50 border border-void-border rounded-xl px-3 py-2">
                             <div className="flex items-center gap-2">
@@ -417,6 +484,11 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
             </Droppable>
           </DragDropContext>
         )}
+      </div>
+
+      <div className="mb-6">
+        <Label>{activeKind ? t(KIND_LABELS[activeKind].stopsLabelKey) : t("pe_objects")}</Label>
+        <p className="text-xs text-muted mb-2">{t("pe_add_stop_hint")}</p>
 
         <div className="relative mb-2">
           <Search size={14} className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -447,30 +519,6 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
       <div className="mb-6">
         <Label className="flex items-center gap-1.5"><HelpCircle size={14} className="text-emerald-bright" /> {t("pe_riddles_title")}</Label>
         <p className="text-xs text-muted mb-2">{t("pe_riddles_hint")}</p>
-
-        {selectedRiddles.length === 0 ? (
-          <p className="text-muted text-sm py-4 text-center border border-dashed border-void-border rounded-xl mb-3">
-            {t("pe_no_riddles_selected")}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2 mb-3">
-            {selectedRiddles.map((r) => {
-              const level = LEVELS.find((l) => l.value === r.age_group);
-              const typeInfo = riddleTypes.find((rt) => rt.slug === r.riddle_type);
-              return (
-                <div key={r.id} className="flex items-center gap-2 bg-void/50 border border-void-border rounded-xl px-3 py-2">
-                  <HelpCircle size={14} className="text-emerald-bright shrink-0" />
-                  <span className="flex-1 text-sm text-parchment truncate">{r.question}</span>
-                  {typeInfo && <Badge color="arcane">{typeInfo.emoji} {taxonomyLabel(typeInfo, t)}</Badge>}
-                  {level && <Badge color={level.color}>{level.emoji}</Badge>}
-                  <button onClick={() => removeRiddle(r.id)} className="text-muted hover:text-ember-bright shrink-0">
-                    <X size={15} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         <div className="grid sm:grid-cols-3 gap-2 mb-2">
           <Select value={riddleTypeFilter} onChange={(e) => setRiddleTypeFilter(e.target.value)}>
@@ -541,7 +589,7 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
 
       <div className="flex justify-end gap-3">
         <Button variant="ghost" onClick={() => onClose(false)}>{t("common_cancel")}</Button>
-        <Button onClick={handleSave} disabled={!form.name || (form.object_ids.length === 0 && form.riddle_ids.length === 0) || saving}>
+        <Button onClick={handleSave} disabled={!form.name || (stopIds.length === 0 && riddleIds.length === 0) || saving}>
           {t("common_save")}
         </Button>
       </div>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Check } from "lucide-react";
+import { Plus, Trash2, Check, Upload, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { Input, Label, Textarea, Select, Switch } from "@/components/ui/Field";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/lib/LanguageContext";
-import { Riddles, getAdminActiveLicenseCode } from "@/lib/db";
+import { Riddles, getAdminActiveLicenseCode, fileToDataUrl } from "@/lib/db";
 import { getActiveLicense } from "@/lib/auth";
 import { useToast } from "@/components/ui/Misc";
 import { taxonomyLabel, cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import LanguageIndicator from "@/components/shared/LanguageIndicator";
 const EMPTY = {
   question: "", type: "text", answer: "", choices: [], alt_answers: [],
   hint: "", difficulty: "", riddle_type: "", age_group: "apprenti", language: "",
-  is_active: true,
+  is_active: true, image_url: "",
 };
 
 export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
@@ -60,6 +60,12 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
   }
   function removeAltAnswer(index) {
     set("alt_answers", (form.alt_answers || []).filter((_, i) => i !== index));
+  }
+
+  async function handleImage(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    set("image_url", await fileToDataUrl(file));
   }
 
   async function handleSave() {
@@ -118,6 +124,31 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
       <div className="mb-4">
         <Label>{t("rm_hint")}</Label>
         <Textarea value={form.hint} onChange={(e) => set("hint", e.target.value)} rows={1} />
+      </div>
+
+      <div className="mb-4">
+        <Label>{t("rm_reveal_photo")}</Label>
+        <p className="text-xs text-muted mb-2">{t("rm_reveal_photo_hint")}</p>
+        <div className="flex items-center gap-3">
+          {form.image_url && (
+            <div className="relative">
+              <img src={form.image_url} alt="" className="w-14 h-14 rounded-lg object-cover border border-void-border" />
+              <button
+                type="button"
+                onClick={() => set("image_url", "")}
+                className="absolute -top-1.5 -right-1.5 bg-void border border-void-border rounded-full p-0.5 text-muted hover:text-ember-bright"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          )}
+          <label className="cursor-pointer">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-void-border hover:border-gold-dim text-sm">
+              <Upload size={14} /> {t("oe_upload_image")}
+            </span>
+            <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
+          </label>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-3">

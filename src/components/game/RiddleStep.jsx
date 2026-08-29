@@ -8,40 +8,40 @@ import Button from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Misc";
 import { cn } from "@/lib/utils";
 
-export default function RiddleStep({ riddles, onDone, onWrong, timeLimitSeconds = 0 }) {
+// Une devinette à la fois — même logique de contrat que ObjectCard/CodeEntry
+// (stepNumber/totalSteps + onResolved), ce qui permet à Play.jsx de mêler
+// librement devinettes et objets/lieux/animaux dans un seul ordre de jeu
+// (voir la séquence combinée choisie dans le Créateur de Parcours). Avant
+// cette version, ce composant recevait TOUT le paquet de devinettes et le
+// jouait en interne d'un bout à l'autre — incompatible avec un ordre
+// entrelacé.
+export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved, onWrong, timeLimitSeconds = 0 }) {
   const { t } = useLanguage();
-  const [index, setIndex] = useState(0);
   const [value, setValue] = useState("");
   const [feedback, setFeedback] = useState(null); // 'correct' | 'wrong' | 'timeout'
   const [remaining, setRemaining] = useState(timeLimitSeconds);
   const [hintVisible, setHintVisible] = useState(false);
 
-  const riddle = riddles[index];
-
+  // Réinitialise l'état à chaque nouvelle devinette (changement d'id).
   useEffect(() => {
+    setValue("");
+    setFeedback(null);
+    setHintVisible(false);
     setRemaining(timeLimitSeconds);
-  }, [index, timeLimitSeconds]);
+  }, [riddle?.id, timeLimitSeconds]);
 
   useEffect(() => {
     if (!timeLimitSeconds || feedback) return;
     if (remaining <= 0) {
       setFeedback("timeout");
-      setTimeout(advance, 1600);
+      setTimeout(() => onResolved(), 1600);
       return;
     }
     const id = setTimeout(() => setRemaining((r) => r - 1), 1000);
     return () => clearTimeout(id);
-  }, [remaining, timeLimitSeconds, feedback]);
+  }, [remaining, timeLimitSeconds, feedback, onResolved]);
 
   if (!riddle) return null;
-
-  function advance() {
-    setFeedback(null);
-    setValue("");
-    setHintVisible(false);
-    if (index + 1 < riddles.length) setIndex(index + 1);
-    else onDone();
-  }
 
   function submitAnswer(given) {
     // Une devinette peut accepter plusieurs formulations de réponse
@@ -51,7 +51,7 @@ export default function RiddleStep({ riddles, onDone, onWrong, timeLimitSeconds 
     const ok = acceptedAnswers.includes(normalized);
     setFeedback(ok ? "correct" : "wrong");
     if (ok) {
-      setTimeout(advance, 900);
+      setTimeout(() => onResolved(), 900);
     } else {
       onWrong?.();
       setTimeout(() => setFeedback(null), 900);
@@ -76,7 +76,7 @@ export default function RiddleStep({ riddles, onDone, onWrong, timeLimitSeconds 
                 </Badge>
               )}
               <Badge color="arcane">
-                {index + 1}/{riddles.length}
+                {stepNumber}/{totalSteps}
               </Badge>
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function RiddleStep({ riddles, onDone, onWrong, timeLimitSeconds 
               </Button>
             </div>
           )}
-          <button onClick={onDone} className="text-muted text-xs mt-4 hover:text-parchment underline underline-offset-4 mx-auto block">
+          <button onClick={() => onResolved()} className="text-muted text-xs mt-4 hover:text-parchment underline underline-offset-4 mx-auto block">
             {t("riddle_skip")}
           </button>
         </CardContent>
