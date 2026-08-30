@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Check, Upload, X } from "lucide-react";
+import { Plus, Trash2, Check, Upload, X, Sparkles } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { Input, Label, Textarea, Select, Switch } from "@/components/ui/Field";
 import Button from "@/components/ui/Button";
@@ -9,12 +9,16 @@ import { getActiveLicense } from "@/lib/auth";
 import { useToast } from "@/components/ui/Misc";
 import { taxonomyLabel, cn } from "@/lib/utils";
 import { LEVELS } from "@/lib/gameData";
+import { CARD_FAMILIES, RARITIES } from "@/lib/commanderCardThemes";
 import LanguageIndicator from "@/components/shared/LanguageIndicator";
 
 const EMPTY = {
   question: "", type: "text", answer: "", choices: [], alt_answers: [],
   hint: "", difficulty: "", riddle_type: "", age_group: "apprenti", language: "",
   is_active: true, image_url: "",
+  has_character_card: false, card_name: "", card_title: "", card_family: "carthaginois",
+  card_rarity: "legendaire", card_quote: "", card_lore: "",
+  card_skills: [], card_bonuses: [],
 };
 
 export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
@@ -57,6 +61,32 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
   }
   function addAltAnswer() {
     set("alt_answers", [...(form.alt_answers || []), ""]);
+  }
+
+  // ---- Carte "Commandant" (compétences / bonus) -------------------------
+  function updateSkill(index, key, value) {
+    const skills = [...(form.card_skills || [])];
+    skills[index] = { ...skills[index], [key]: value };
+    set("card_skills", skills);
+  }
+  function addSkill() {
+    if ((form.card_skills || []).length >= 4) return;
+    set("card_skills", [...(form.card_skills || []), { icon: "✦", name: "", description: "" }]);
+  }
+  function removeSkill(index) {
+    set("card_skills", (form.card_skills || []).filter((_, i) => i !== index));
+  }
+  function updateBonus(index, key, value) {
+    const bonuses = [...(form.card_bonuses || [])];
+    bonuses[index] = { ...bonuses[index], [key]: value };
+    set("card_bonuses", bonuses);
+  }
+  function addBonus() {
+    if ((form.card_bonuses || []).length >= 3) return;
+    set("card_bonuses", [...(form.card_bonuses || []), { icon: "sparkles", label: "" }]);
+  }
+  function removeBonus(index) {
+    set("card_bonuses", (form.card_bonuses || []).filter((_, i) => i !== index));
   }
   function removeAltAnswer(index) {
     set("alt_answers", (form.alt_answers || []).filter((_, i) => i !== index));
@@ -149,6 +179,102 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
             <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
           </label>
         </div>
+      </div>
+
+      <div className="mb-4 p-4 rounded-xl border border-void-border bg-white/[0.02]">
+        <div className="flex items-center justify-between mb-1">
+          <Label className="flex items-center gap-1.5 mb-0"><Sparkles size={14} className="text-gold-bright" /> {t("cc_editor_title")}</Label>
+          <Switch checked={form.has_character_card} onChange={(v) => set("has_character_card", v)} />
+        </div>
+        <p className="text-xs text-muted mb-3">{t("cc_editor_hint")}</p>
+
+        {form.has_character_card && (
+          <div className="flex flex-col gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <Label>{t("cc_name")}</Label>
+                <Input value={form.card_name} onChange={(e) => set("card_name", e.target.value)} placeholder="Amilcar Barca" />
+              </div>
+              <div>
+                <Label>{t("cc_title")}</Label>
+                <Input value={form.card_title} onChange={(e) => set("card_title", e.target.value)} placeholder="Stratège de Carthage" />
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <Label>{t("cc_family")}</Label>
+                <Select value={form.card_family} onChange={(e) => set("card_family", e.target.value)}>
+                  {CARD_FAMILIES.map((f) => (
+                    <option key={f.slug} value={f.slug}>{f.emoji} {f.label}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label>{t("cc_rarity")}</Label>
+                <Select value={form.card_rarity} onChange={(e) => set("card_rarity", e.target.value)}>
+                  {RARITIES.map((r) => (
+                    <option key={r.slug} value={r.slug}>{"⭐".repeat(r.stars)} {r.label}</option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>{t("cc_quote")}</Label>
+              <Input value={form.card_quote} onChange={(e) => set("card_quote", e.target.value)} placeholder={t("cc_quote_placeholder")} />
+            </div>
+
+            <div>
+              <Label>{t("cc_lore")}</Label>
+              <Textarea value={form.card_lore} onChange={(e) => set("card_lore", e.target.value)} rows={2} />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="mb-0">{t("cc_skills")} ({(form.card_skills || []).length}/4)</Label>
+                {(form.card_skills || []).length < 4 && (
+                  <Button type="button" variant="ghost" size="sm" onClick={addSkill}><Plus size={13} /> {t("common_add")}</Button>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                {(form.card_skills || []).map((s, i) => (
+                  <div key={i} className="flex gap-2 items-start">
+                    <Input className="w-14 text-center" value={s.icon} onChange={(e) => updateSkill(i, "icon", e.target.value)} placeholder="✦" />
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <Input value={s.name} onChange={(e) => updateSkill(i, "name", e.target.value)} placeholder={t("cc_skill_name_placeholder")} />
+                      <Input value={s.description} onChange={(e) => updateSkill(i, "description", e.target.value)} placeholder={t("cc_skill_desc_placeholder")} />
+                    </div>
+                    <button onClick={() => removeSkill(i)} className="text-muted hover:text-ember-bright mt-2"><X size={15} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="mb-0">{t("cc_bonuses")} ({(form.card_bonuses || []).length}/3)</Label>
+                {(form.card_bonuses || []).length < 3 && (
+                  <Button type="button" variant="ghost" size="sm" onClick={addBonus}><Plus size={13} /> {t("common_add")}</Button>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                {(form.card_bonuses || []).map((b, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Select className="w-32" value={b.icon} onChange={(e) => updateBonus(i, "icon", e.target.value)}>
+                      <option value="swords">⚔️ {t("cc_bonus_icon_attack")}</option>
+                      <option value="shield">🛡️ {t("cc_bonus_icon_defense")}</option>
+                      <option value="coins">💰 {t("cc_bonus_icon_resources")}</option>
+                      <option value="sparkles">✨ {t("cc_bonus_icon_other")}</option>
+                    </Select>
+                    <Input className="flex-1" value={b.label} onChange={(e) => updateBonus(i, "label", e.target.value)} placeholder={t("cc_bonus_label_placeholder")} />
+                    <button onClick={() => removeBonus(i)} className="text-muted hover:text-ember-bright"><X size={15} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 mb-3">

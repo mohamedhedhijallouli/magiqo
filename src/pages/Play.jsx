@@ -46,6 +46,8 @@ import DashboardObjectCard from "@/components/game/archetypes/dashboard/Dashboar
 import DashboardCodeEntry from "@/components/game/archetypes/dashboard/DashboardCodeEntry";
 import DashboardRevealCard from "@/components/game/archetypes/dashboard/DashboardRevealCard";
 import DashboardVictoryScreen from "@/components/game/archetypes/dashboard/DashboardVictoryScreen";
+import CommanderCard from "@/components/game/CommanderCard";
+import { computeCardLevel } from "@/lib/commanderCardThemes";
 
 // Chaque interfaceArchetype (voir lib/worlds.js) peut fournir ses propres
 // variantes des écrans de jeu. Un archétype sans entrée ici, ou une entrée
@@ -128,6 +130,10 @@ export default function Play() {
   // Chaque entrée : { kind: "stop" | "riddle", data }.
   const [sequence, setSequence] = useState([]);
   const [stepIndex, setStepIndex] = useState(0);
+  // Niveau calculé pour la carte Commandant en cours de révélation (voir
+  // handleRiddleResolved) — dépend de la performance du joueur sur CETTE
+  // devinette précise, pas du score global du parcours.
+  const [cardLevel, setCardLevel] = useState(90);
 
   const [elapsed, setElapsed] = useState(0);
   const [penaltyCount, setPenaltyCount] = useState(0);
@@ -254,13 +260,19 @@ export default function Play() {
     applyPenalty(parcours.penalty_per_wrong_riddle_seconds || 15);
   }
 
-  // Une devinette résolue (bonne réponse ou chrono expiré) déclenche la
-  // révélation UNIQUEMENT si elle porte une photo (comme demandé : "comme
-  // les objets, les lieux et les animaux") ; sinon on avance directement à
-  // l'étape suivante, sans écran intermédiaire.
-  function handleRiddleResolved() {
+  // Une devinette résolue (bonne réponse ou chrono expiré) déclenche :
+  //  - la carte Commandant si elle en porte une (niveau calculé selon la
+  //    performance du joueur sur CETTE devinette précise, voir
+  //    computeCardLevel) ;
+  //  - sinon la révélation simple si elle a une photo (comme demandé :
+  //    "comme les objets, les lieux et les animaux") ;
+  //  - sinon on avance directement, sans écran intermédiaire.
+  function handleRiddleResolved(meta = {}) {
     const current = sequence[stepIndex];
-    if (current?.data?.image_url) {
+    if (current?.data?.has_character_card) {
+      setCardLevel(computeCardLevel(meta));
+      setPhase("card-reveal");
+    } else if (current?.data?.image_url) {
       setPhase("reveal");
     } else {
       goNextStep();
@@ -399,6 +411,12 @@ export default function Play() {
                 onWrong={handleWrongRiddle}
                 timeLimitSeconds={parcours.riddle_time_limit_seconds || 0}
               />
+            </motion.div>
+          )}
+
+          {phase === "card-reveal" && currentRiddle && (
+            <motion.div key={`card-${stepIndex}`} variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full">
+              <CommanderCard riddle={currentRiddle} level={cardLevel} onContinue={goNextStep} />
             </motion.div>
           )}
 

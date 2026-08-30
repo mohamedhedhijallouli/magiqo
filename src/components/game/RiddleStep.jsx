@@ -21,12 +21,14 @@ export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved,
   const [feedback, setFeedback] = useState(null); // 'correct' | 'wrong' | 'timeout'
   const [remaining, setRemaining] = useState(timeLimitSeconds);
   const [hintVisible, setHintVisible] = useState(false);
+  const [wrongCount, setWrongCount] = useState(0);
 
   // Réinitialise l'état à chaque nouvelle devinette (changement d'id).
   useEffect(() => {
     setValue("");
     setFeedback(null);
     setHintVisible(false);
+    setWrongCount(0);
     setRemaining(timeLimitSeconds);
   }, [riddle?.id, timeLimitSeconds]);
 
@@ -34,12 +36,12 @@ export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved,
     if (!timeLimitSeconds || feedback) return;
     if (remaining <= 0) {
       setFeedback("timeout");
-      setTimeout(() => onResolved(), 1600);
+      setTimeout(() => onResolved({ wrongCount, hintUsed: hintVisible, timedOut: true }), 1600);
       return;
     }
     const id = setTimeout(() => setRemaining((r) => r - 1), 1000);
     return () => clearTimeout(id);
-  }, [remaining, timeLimitSeconds, feedback, onResolved]);
+  }, [remaining, timeLimitSeconds, feedback, onResolved, wrongCount, hintVisible]);
 
   if (!riddle) return null;
 
@@ -51,8 +53,12 @@ export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved,
     const ok = acceptedAnswers.includes(normalized);
     setFeedback(ok ? "correct" : "wrong");
     if (ok) {
-      setTimeout(() => onResolved(), 900);
+      // wrongCount/hintVisible remontés à l'appelant : ils déterminent le
+      // niveau de la carte Commandant si cette devinette en révèle une —
+      // voir computeCardLevel() dans lib/commanderCardThemes.js.
+      setTimeout(() => onResolved({ wrongCount, hintUsed: hintVisible, timedOut: false }), 900);
     } else {
+      setWrongCount((c) => c + 1);
       onWrong?.();
       setTimeout(() => setFeedback(null), 900);
     }
@@ -159,7 +165,7 @@ export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved,
               </Button>
             </div>
           )}
-          <button onClick={() => onResolved()} className="text-muted text-xs mt-4 hover:text-parchment underline underline-offset-4 mx-auto block">
+          <button onClick={() => onResolved({ wrongCount, hintUsed: hintVisible, timedOut: false, skipped: true })} className="text-muted text-xs mt-4 hover:text-parchment underline underline-offset-4 mx-auto block">
             {t("riddle_skip")}
           </button>
         </CardContent>
