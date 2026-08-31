@@ -47,7 +47,9 @@ import DashboardCodeEntry from "@/components/game/archetypes/dashboard/Dashboard
 import DashboardRevealCard from "@/components/game/archetypes/dashboard/DashboardRevealCard";
 import DashboardVictoryScreen from "@/components/game/archetypes/dashboard/DashboardVictoryScreen";
 import CommanderCard from "@/components/game/CommanderCard";
+import CollectionModal from "@/components/game/CollectionModal";
 import { computeCardLevel } from "@/lib/commanderCardThemes";
+import { findOrCreatePlayer, recordCardObtained } from "@/lib/collection";
 
 // Chaque interfaceArchetype (voir lib/worlds.js) peut fournir ses propres
 // variantes des écrans de jeu. Un archétype sans entrée ici, ou une entrée
@@ -134,6 +136,9 @@ export default function Play() {
   // handleRiddleResolved) — dépend de la performance du joueur sur CETTE
   // devinette précise, pas du score global du parcours.
   const [cardLevel, setCardLevel] = useState(90);
+  const [cardStatus, setCardStatus] = useState(null); // 'new' | 'level_up' | 'unchanged'
+  const [codeError, setCodeError] = useState(null);
+  const [collectionOpen, setCollectionOpen] = useState(false);
 
   const [elapsed, setElapsed] = useState(0);
   const [penaltyCount, setPenaltyCount] = useState(0);
@@ -225,8 +230,20 @@ export default function Play() {
     setPhase(needsTicket ? "ticket" : "name");
   }
 
-  function handlePlayerSubmit({ name, level }) {
-    setPlayer({ name, level });
+  async function handlePlayerSubmit({ name, level, code }) {
+    // Le compte joueur (prénom + code personnel) est scopé à la licence du
+    // PARCOURS joué — voir lib/collection.js. Un code fourni mais introuvable
+    // n'est jamais silencieusement remplacé par un nouveau profil : on
+    // affiche une erreur claire pour éviter de mélanger deux enfants
+    // différents dans une même collection.
+    const licenseCode = parcours?.license_code;
+    const { player: foundPlayer, error } = await findOrCreatePlayer({ name, code, licenseCode });
+    if (error === "code_not_found") {
+      setCodeError(true);
+      return;
+    }
+    setCodeError(null);
+    setPlayer({ name, level, id: foundPlayer.id, code: foundPlayer.code });
     setStepIndex(0);
     setPhase(sequence[0]?.kind === "riddle" ? "riddle" : "object");
     startRef.current = Date.now();
@@ -263,14 +280,24 @@ export default function Play() {
   // Une devinette résolue (bonne réponse ou chrono expiré) déclenche :
   //  - la carte Commandant si elle en porte une (niveau calculé selon la
   //    performance du joueur sur CETTE devinette précise, voir
-  //    computeCardLevel) ;
+  //    computeCardLevel, PUIS confronté à la collection persistante du
+  //    joueur — voir recordCardObtained : le meilleur niveau jamais atteint
+  //    est conservé, avec un petit bonus à chaque doublon) ;
   //  - sinon la révélation simple si elle a une photo (comme demandé :
   //    "comme les objets, les lieux et les animaux") ;
   //  - sinon on avance directement, sans écran intermédiaire.
-  function handleRiddleResolved(meta = {}) {
+  async function handleRiddleResolved(meta = {}) {
     const current = sequence[stepIndex];
     if (current?.data?.has_character_card) {
-      setCardLevel(computeCardLevel(meta));
+      const freshLevel = computeCardLevel(meta);
+      const { card, status } = await recordCardObtained({
+        playerId: player.id,
+        riddle: current.data,
+        computedLevel: freshLevel,
+        licenseCode: parcours.license_code,
+      });
+      setCardLevel(card.level);
+      setCardStatus(status);
       setPhase("card-reveal");
     } else if (current?.data?.image_url) {
       setPhase("reveal");
@@ -334,6 +361,8 @@ export default function Play() {
     setPenaltyCount(0);
     setSuspended(false);
     setErrorsSinceSuspend(0);
+    setCollectionOpen(false);
+    setCodeError(null);
   }
 
   const currentEntry = sequence[stepIndex];
@@ -388,7 +417,7 @@ export default function Play() {
 
           {phase === "name" && parcours && (
             <motion.div key="name" variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full">
-              <PlayerNameForm parcours={parcours} onSubmit={handlePlayerSubmit} />
+              <PlayerNameForm parcours={parcours} onSubmit={handlePlayerSubmit} codeError={codeError} />
             </motion.div>
           )}
 
@@ -416,7 +445,7 @@ export default function Play() {
 
           {phase === "card-reveal" && currentRiddle && (
             <motion.div key={`card-${stepIndex}`} variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full">
-              <CommanderCard riddle={currentRiddle} level={cardLevel} onContinue={goNextStep} />
+              <CommanderCard riddle={currentRiddle} level={cardLevel} status={cardStatus} onContinue={goNextStep} />
             </motion.div>
           )}
 
@@ -462,10 +491,27 @@ export default function Play() {
                 result={{ totalTime: totalTimeForVictory, penaltyCount, score: calculateScore(totalTimeForVictory, penaltyCount, sequence.length), badge: getBadge(calculateScore(totalTimeForVictory, penaltyCount, sequence.length)) }}
                 onReplay={replay}
               />
+              {player?.id && (
+                <button
+                  onClick={() => setCollectionOpen(true)}
+                  className="block mx-auto mt-4 text-sm text-gold-dim hover:text-gold-bright underline underline-offset-4"
+                >
+                  🎴 {t("coll_view_button")}
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {collectionOpen && (
+        <CollectionModal
+          playerId={player.id}
+          playerCode={player.code}
+          licenseCode={parcours?.license_code}
+          onClose={() => setCollectionOpen(false)}
+        />
+      )}
     </div>
     </WorldThemeProvider>
   );

@@ -21,7 +21,7 @@ const BONUS_ICONS = { swords: Swords, shield: Shield, coins: Coins, sparkles: Sp
 // du joueur sur CETTE devinette (voir computeCardLevel) — pas stocké sur la
 // fiche du personnage, qui elle ne porte que des attributs fixes (nom,
 // titre, famille, rareté, compétences, bonus, historique).
-export default function CommanderCard({ riddle, level, onContinue }) {
+export default function CommanderCard({ riddle, level, status, onContinue }) {
   const { t } = useLanguage();
   const theme = getFamilyTheme(riddle.card_family);
   const rarity = getRarity(riddle.card_rarity);
@@ -53,6 +53,18 @@ export default function CommanderCard({ riddle, level, onContinue }) {
       >
         {/* Portrait */}
         <div className="relative h-56" style={{ background: "rgb(var(--cc-panel))" }}>
+          {status && (
+            <div
+              className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide z-10"
+              style={{
+                background: status === "new" ? "rgb(var(--cc-accent))" : "rgb(var(--cc-gold))",
+                color: "rgb(var(--cc-bg))",
+              }}
+            >
+              {status === "new" && t("cc_status_new")}
+              {status === "level_up" && t("cc_status_level_up")}
+            </div>
+          )}
           {riddle.image_url ? (
             <img src={riddle.image_url} alt="" className="w-full h-full object-cover" />
           ) : (

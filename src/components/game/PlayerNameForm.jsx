@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Wand2 } from "lucide-react";
+import { Wand2, KeyRound } from "lucide-react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Field";
@@ -8,10 +8,11 @@ import Button from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { LEVELS } from "@/lib/gameData";
 
-export default function PlayerNameForm({ parcours, onSubmit }) {
+export default function PlayerNameForm({ parcours, onSubmit, codeError }) {
   const { t } = useLanguage();
   const [name, setName] = useState("");
   const [level, setLevel] = useState(parcours.age_group || "apprenti");
+  const [code, setCode] = useState("");
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -37,6 +38,18 @@ export default function PlayerNameForm({ parcours, onSubmit }) {
             className="mb-5"
             maxLength={20}
           />
+
+          <Label className="flex items-center gap-1.5"><KeyRound size={12} /> {t("pnf_code_label")}</Label>
+          <p className="text-xs text-muted mb-2">{t("pnf_code_hint")}</p>
+          <Input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder={t("pnf_code_placeholder")}
+            maxLength={4}
+            className={cn("mb-1 font-rune tracking-widest uppercase", codeError && "border-ember ring-2 ring-ember")}
+          />
+          {codeError && <p className="text-xs text-ember-bright mb-4">{t("pnf_code_error")}</p>}
+          {!codeError && <div className="mb-5" />}
 
           <Label>{t("pnf_agegroup")}</Label>
           <div className="grid grid-cols-1 gap-2 mb-6">
@@ -70,7 +83,7 @@ export default function PlayerNameForm({ parcours, onSubmit }) {
             <Button
               className="w-full"
               disabled={!name.trim()}
-              onClick={() => onSubmit({ name: name.trim(), level })}
+              onClick={() => onSubmit({ name: name.trim(), level, code: code.trim() })}
             >
               🗡️ {t("pnf_launch")}
             </Button>

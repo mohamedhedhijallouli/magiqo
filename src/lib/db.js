@@ -219,6 +219,12 @@ export const ParcoursTypes = createCollection("parcours_types");
 export const PlayerTickets = createCollection("player_tickets");
 export const Riddles = createCollection("riddles");
 export const RiddleTypes = createCollection("riddle_types");
+// Comptes joueurs persistants (prénom + code personnel, sans mot de passe)
+// et leur collection de cartes Commandant — voir lib/collection.js. Aucune
+// migration SQL nécessaire : la table polymorphe app_rows accepte n'importe
+// quel nom de collection dès sa première utilisation.
+export const Players = createCollection("players");
+export const PlayerCards = createCollection("player_cards");
 
 // ---------------------------------------------------------------------------
 // Realtime — reçoit les changements faits depuis un AUTRE appareil/onglet
@@ -473,14 +479,14 @@ export async function resolveRiddles(ids = []) {
   return ids.map((id) => byId.get(id)).filter(Boolean);
 }
 
-const ALL_COLLECTIONS = ["game_objects", "animals", "animal_types", "categories", "parcours", "parcours_types", "quests", "parents", "places", "place_types", "users", "player_tickets", "riddles", "riddle_types"];
+const ALL_COLLECTIONS = ["game_objects", "animals", "animal_types", "categories", "parcours", "parcours_types", "quests", "parents", "places", "place_types", "users", "player_tickets", "riddles", "riddle_types", "players", "player_cards"];
 const PRESERVED_ON_RESET = ["parcours_types", "categories", "animal_types", "place_types", "riddle_types"];
 const GAME_DATA_COLLECTIONS = ALL_COLLECTIONS.filter((c) => !PRESERVED_ON_RESET.includes(c));
 const COLLECTION_REFS = {
   game_objects: GameObjects, animals: Animals, animal_types: AnimalTypes, categories: Categories,
   parcours: Parcours, parcours_types: ParcoursTypes, quests: Quests, parents: Parents,
   places: Places, place_types: PlaceTypes, users: Users, player_tickets: PlayerTickets,
-  riddles: Riddles, riddle_types: RiddleTypes,
+  riddles: Riddles, riddle_types: RiddleTypes, players: Players, player_cards: PlayerCards,
 };
 
 // Export/Import : désormais scopés à la licence active (exporte/restaure
