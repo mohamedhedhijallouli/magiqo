@@ -1,0 +1,32 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# MagiQo est une Single Page Application (React Router) : sans cette règle,
+# recharger l'app sur une route comme /admin ou /play renverrait une 404
+# Netlify (le serveur cherche un fichier /admin/index.html qui n'existe
+# pas). On redirige donc tout vers index.html et React Router prend le relais.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# En-têtes de cache : les fichiers hashés par Vite (assets/index-XXXX.js)
+# peuvent être mis en cache indéfiniment (un nouveau build change le hash).
+# index.html et version.json, eux, NE DOIVENT JAMAIS être mis en cache — 
+# c'est ce qui permet à VersionWatcher.jsx de détecter un nouveau
+# déploiement pendant qu'un onglet reste ouvert (voir src/components/shared/VersionWatcher.jsx).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/version.json"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"

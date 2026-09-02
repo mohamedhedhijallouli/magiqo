@@ -1,0 +1,299 @@
+[
+  {
+    "key": "hist_crown",
+    "riddle_type": "histoire",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "¿Qué objeto, decorado con joyas, lleva un rey o una reina en la cabeza?",
+    "answer": "una corona",
+    "hint": "¡También se encuentra en los dientes!"
+  },
+  {
+    "key": "hist_sunking",
+    "riddle_type": "histoire",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "¿Qué rey de Francia era conocido como el 'Rey Sol'?",
+    "answer": "Luis XIV",
+    "alt_answers": [
+      "luis 14",
+      "luis catorce"
+    ],
+    "hint": "Mandó construir el Palacio de Versalles."
+  },
+  {
+    "key": "geo_capital_fr",
+    "riddle_type": "geographie",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "¿Cuál es la capital de Francia?",
+    "answer": "París",
+    "choices": [
+      "París",
+      "Lyon",
+      "Marsella",
+      "Burdeos"
+    ]
+  },
+  {
+    "key": "geo_desert",
+    "riddle_type": "geographie",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "¿Cuál es el desierto cálido más grande del mundo?",
+    "answer": "el Sahara",
+    "alt_answers": [
+      "sahara"
+    ],
+    "hint": "Está en el norte de África."
+  },
+  {
+    "key": "math_multiply",
+    "riddle_type": "mathematiques",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "¿Cuánto es 12 × 12?",
+    "answer": "144"
+  },
+  {
+    "key": "math_sqrt",
+    "riddle_type": "mathematiques",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "¿Cuál es la raíz cuadrada de 169?",
+    "answer": "13"
+  },
+  {
+    "key": "culture_leapyear",
+    "riddle_type": "culture_generale",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "¿Cuántos días tiene un año bisiesto?",
+    "answer": "366",
+    "hint": "Un día más, en febrero."
+  },
+  {
+    "key": "culture_sky",
+    "riddle_type": "culture_generale",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "¿De qué color es el cielo en un día despejado?",
+    "answer": "azul"
+  },
+  {
+    "key": "sci_spider",
+    "riddle_type": "sciences",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "¿Cuántas patas tiene una araña?",
+    "answer": "8",
+    "alt_answers": [
+      "ocho"
+    ]
+  },
+  {
+    "key": "sci_redplanet",
+    "riddle_type": "sciences",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "¿Qué planeta es apodado el 'planeta rojo'?",
+    "answer": "Marte",
+    "choices": [
+      "Marte",
+      "Venus",
+      "Júpiter",
+      "Saturno"
+    ]
+  },
+  {
+    "key": "logic_towel",
+    "riddle_type": "logique",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Cuanto más me seco, más mojada me vuelvo. ¿Qué soy?",
+    "answer": "una toalla",
+    "alt_answers": [
+      "toalla"
+    ]
+  },
+  {
+    "key": "logic_comb",
+    "riddle_type": "logique",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "¿Qué tiene dientes pero nunca muerde?",
+    "answer": "un peine",
+    "alt_answers": [
+      "peine"
+    ]
+  },
+  {
+    "key": "lang_home_plural",
+    "riddle_type": "francais",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "choice",
+    "question": "¿Cómo se dice 'gato' en francés?",
+    "answer": "chat",
+    "choices": [
+      "chat",
+      "maison",
+      "chien",
+      "soleil"
+    ]
+  },
+  {
+    "key": "lang_home_antonym",
+    "riddle_type": "francais",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "¿Cómo se dice 'gracias' en francés?",
+    "answer": "merci"
+  },
+  {
+    "key": "lang_foreign_library",
+    "riddle_type": "anglais",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "¿Cómo se dice 'biblioteca' en inglés?",
+    "answer": "library"
+  },
+  {
+    "key": "lang_foreign_cat",
+    "riddle_type": "anglais",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "¿Cómo se dice 'gato' en inglés?",
+    "answer": "cat"
+  },
+  {
+    "key": "word_castle",
+    "riddle_type": "lettres_mots",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Empiezo con 'CAS' y soy el gran edificio donde vive un rey. ¿Qué soy?",
+    "answer": "castillo"
+  },
+  {
+    "key": "word_anagram_dog",
+    "riddle_type": "lettres_mots",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Ordena estas letras para formar un animal: R-R-E-O-P",
+    "answer": "perro"
+  },
+  {
+    "key": "code_binary",
+    "riddle_type": "codage",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "¿Cuántos dígitos diferentes usa el código binario?",
+    "answer": "2",
+    "alt_answers": [
+      "dos"
+    ],
+    "hint": "¡0 y 1!"
+  },
+  {
+    "key": "code_pc",
+    "riddle_type": "codage",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "¿Qué significan las siglas 'PC' en informática?",
+    "answer": "computadora personal",
+    "alt_answers": [
+      "ordenador personal"
+    ]
+  },
+  {
+    "key": "char_pirate",
+    "riddle_type": "personnage",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "Navego los mares en busca de tesoros, con un parche en un ojo. ¿Quién soy?",
+    "answer": "un pirata",
+    "alt_answers": [
+      "pirata"
+    ]
+  },
+  {
+    "key": "char_squire",
+    "riddle_type": "personnage",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "En los relatos de caballería, ¿cómo se llama un caballero en entrenamiento que aún no ha sido armado?",
+    "answer": "un escudero",
+    "alt_answers": [
+      "escudero"
+    ]
+  },
+  {
+    "key": "fantasy_siren",
+    "riddle_type": "fantastique",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "En la leyenda griega, ¿qué criatura mitad mujer mitad ave atraía a los marineros con su canto?",
+    "answer": "una sirena",
+    "alt_answers": [
+      "sirena"
+    ]
+  },
+  {
+    "key": "fantasy_dragon",
+    "riddle_type": "fantastique",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "¿Qué criatura legendaria escupe fuego y custodia un tesoro?",
+    "answer": "un dragón",
+    "choices": [
+      "un dragón",
+      "un duende",
+      "un unicornio",
+      "un trol"
+    ]
+  },
+  {
+    "key": "cine_cinema",
+    "riddle_type": "cinematographique",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "¿Cómo se llama el lugar donde se ve una película en pantalla grande?",
+    "answer": "un cine",
+    "alt_answers": [
+      "cine"
+    ]
+  },
+  {
+    "key": "cine_action",
+    "riddle_type": "cinematographique",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "¿Qué palabra grita un director de cine para empezar una toma?",
+    "answer": "acción"
+  }
+]

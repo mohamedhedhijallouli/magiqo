@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -----------------------------------------------------------------------
+ * Thème par défaut — "Grimoire MagiQo" (World fantastique historique).
+ * Ces variables sont la source de vérité pour toutes les couleurs/fonts
+ * de l'app (voir tailwind.config.js). WorldThemeProvider les réécrit sur
+ * <html> à l'exécution selon le World du parcours en cours ; en dehors
+ * du jeu (Admin, Login...), ce sont ces valeurs par défaut qui s'appliquent.
+ * Format couleur : "R G B" (sans virgules) pour rester compatible avec
+ * les modificateurs d'opacité Tailwind (bg-void/60, etc.).
+ * ----------------------------------------------------------------------- */
+:root {
+  --color-void: 15 12 31;
+  --color-void-panel: 24 18 51;
+  --color-void-panel2: 33 26 66;
+  --color-void-border: 53 42 99;
+
+  --color-gold: 232 178 77;
+  --color-gold-bright: 246 212 136;
+  --color-gold-dim: 156 122 56;
+
+  --color-ember: 226 103 59;
+  --color-ember-bright: 245 138 92;
+
+  --color-arcane: 139 123 240;
+  --color-arcane-dim: 92 79 174;
+
+  --color-emerald: 63 184 138;
+  --color-emerald-bright: 95 221 170;
+
+  --color-parchment: 243 234 216;
+  --color-muted: 167 158 207;
+
+  --font-display: 'Cinzel';
+  --font-body: 'Quicksand';
+  --font-rune: 'JetBrains Mono';
+
+  --bg-glow-1: rgba(139,123,240,0.10);
+  --bg-glow-2: rgba(232,178,77,0.08);
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-void text-parchment font-body antialiased;
+  background-image:
+    radial-gradient(circle at 15% 10%, var(--bg-glow-1), transparent 40%),
+    radial-gradient(circle at 85% 0%, var(--bg-glow-2), transparent 45%);
+  background-attachment: fixed;
+}
+
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+::selection {
+  background: rgba(232,178,77,0.35);
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0F0C1F; }
+::-webkit-scrollbar-thumb { background: #352A63; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #8B7BF0; }
+
+.font-display { letter-spacing: 0.02em; }
+
+.card-seal {
+  position: relative;
+}
+.card-seal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(232,178,77,0.5), rgba(139,123,240,0.2), rgba(232,178,77,0.15));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(90deg, #E8B24D, #F6D488, #E8B24D);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  body { background: white !important; }
+}

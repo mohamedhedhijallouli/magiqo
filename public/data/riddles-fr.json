@@ -1,0 +1,301 @@
+[
+  {
+    "key": "hist_crown",
+    "riddle_type": "histoire",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Quel objet, orné de bijoux, un roi ou une reine porte-t-il sur la tête ?",
+    "answer": "une couronne",
+    "hint": "On la trouve aussi sur les dents !"
+  },
+  {
+    "key": "hist_sunking",
+    "riddle_type": "histoire",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Quel roi de France était surnommé le « Roi Soleil » ?",
+    "answer": "Louis XIV",
+    "alt_answers": [
+      "louis 14"
+    ],
+    "hint": "Il a fait construire le château de Versailles."
+  },
+  {
+    "key": "geo_capital_fr",
+    "riddle_type": "geographie",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "Quelle est la capitale de la France ?",
+    "answer": "Paris",
+    "choices": [
+      "Paris",
+      "Lyon",
+      "Marseille",
+      "Bordeaux"
+    ]
+  },
+  {
+    "key": "geo_desert",
+    "riddle_type": "geographie",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "Quel est le plus grand désert chaud du monde ?",
+    "answer": "le Sahara",
+    "alt_answers": [
+      "sahara"
+    ],
+    "hint": "Il se trouve en Afrique du Nord."
+  },
+  {
+    "key": "math_multiply",
+    "riddle_type": "mathematiques",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "Combien font 12 × 12 ?",
+    "answer": "144"
+  },
+  {
+    "key": "math_sqrt",
+    "riddle_type": "mathematiques",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "Quelle est la racine carrée de 169 ?",
+    "answer": "13"
+  },
+  {
+    "key": "culture_leapyear",
+    "riddle_type": "culture_generale",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "Combien de jours compte une année bissextile ?",
+    "answer": "366",
+    "hint": "Un jour de plus qu'une année normale, en février."
+  },
+  {
+    "key": "culture_sky",
+    "riddle_type": "culture_generale",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "De quelle couleur est le ciel par temps clair ?",
+    "answer": "bleu",
+    "alt_answers": [
+      "bleue"
+    ]
+  },
+  {
+    "key": "sci_spider",
+    "riddle_type": "sciences",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Combien de pattes possède une araignée ?",
+    "answer": "8",
+    "alt_answers": [
+      "huit"
+    ]
+  },
+  {
+    "key": "sci_redplanet",
+    "riddle_type": "sciences",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "Quelle planète est surnommée la « planète rouge » ?",
+    "answer": "Mars",
+    "choices": [
+      "Mars",
+      "Vénus",
+      "Jupiter",
+      "Saturne"
+    ]
+  },
+  {
+    "key": "logic_towel",
+    "riddle_type": "logique",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Plus je sèche, plus je deviens mouillée. Que suis-je ?",
+    "answer": "une serviette",
+    "alt_answers": [
+      "serviette"
+    ]
+  },
+  {
+    "key": "logic_comb",
+    "riddle_type": "logique",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "Qu'est-ce qui a des dents mais ne mord jamais ?",
+    "answer": "un peigne",
+    "alt_answers": [
+      "peigne"
+    ]
+  },
+  {
+    "key": "lang_home_plural",
+    "riddle_type": "francais",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "choice",
+    "question": "Quel est le pluriel du mot « cheval » ?",
+    "answer": "chevaux",
+    "choices": [
+      "chevaux",
+      "chevals",
+      "chevaus",
+      "chevales"
+    ]
+  },
+  {
+    "key": "lang_home_antonym",
+    "riddle_type": "francais",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "Quel est le contraire du mot « bienveillant » ?",
+    "answer": "malveillant"
+  },
+  {
+    "key": "lang_foreign_library",
+    "riddle_type": "anglais",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "Comment dit-on « bibliothèque » en anglais ?",
+    "answer": "library"
+  },
+  {
+    "key": "lang_foreign_cat",
+    "riddle_type": "anglais",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Comment dit-on « chat » en anglais ?",
+    "answer": "cat"
+  },
+  {
+    "key": "word_castle",
+    "riddle_type": "lettres_mots",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Je commence comme « chat » et je finis comme « teau ». Que suis-je ?",
+    "answer": "château"
+  },
+  {
+    "key": "word_anagram_dog",
+    "riddle_type": "lettres_mots",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Remets ces lettres dans le bon ordre pour trouver un animal : N-E-I-C-H",
+    "answer": "chien"
+  },
+  {
+    "key": "code_binary",
+    "riddle_type": "codage",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Combien de chiffres différents utilise le système binaire des ordinateurs ?",
+    "answer": "2",
+    "alt_answers": [
+      "deux"
+    ],
+    "hint": "0 et 1 !"
+  },
+  {
+    "key": "code_pc",
+    "riddle_type": "codage",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "Que signifie le sigle « PC » en informatique ?",
+    "answer": "ordinateur personnel",
+    "alt_answers": [
+      "personal computer"
+    ]
+  },
+  {
+    "key": "char_pirate",
+    "riddle_type": "personnage",
+    "age_group": "aventurier",
+    "difficulty": "medium",
+    "type": "text",
+    "question": "Je navigue sur les mers à la recherche de trésors, un bandeau sur l'œil. Qui suis-je ?",
+    "answer": "un pirate",
+    "alt_answers": [
+      "pirate"
+    ]
+  },
+  {
+    "key": "char_squire",
+    "riddle_type": "personnage",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "Dans les récits de chevalerie, comment appelle-t-on un chevalier qui n'a pas encore été adoubé ?",
+    "answer": "un écuyer",
+    "alt_answers": [
+      "écuyer"
+    ]
+  },
+  {
+    "key": "fantasy_siren",
+    "riddle_type": "fantastique",
+    "age_group": "expert",
+    "difficulty": "hard",
+    "type": "text",
+    "question": "Dans les légendes grecques, quelle créature mi-femme mi-oiseau attirait les marins par son chant ?",
+    "answer": "une sirène",
+    "alt_answers": [
+      "sirène"
+    ]
+  },
+  {
+    "key": "fantasy_dragon",
+    "riddle_type": "fantastique",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "choice",
+    "question": "Quelle créature légendaire crache du feu et garde un trésor ?",
+    "answer": "un dragon",
+    "choices": [
+      "un dragon",
+      "un lutin",
+      "une licorne",
+      "un troll"
+    ]
+  },
+  {
+    "key": "cine_cinema",
+    "riddle_type": "cinematographique",
+    "age_group": "explorateur",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Comment appelle-t-on l'endroit où l'on regarde un film sur grand écran ?",
+    "answer": "un cinéma",
+    "alt_answers": [
+      "cinéma"
+    ]
+  },
+  {
+    "key": "cine_action",
+    "riddle_type": "cinematographique",
+    "age_group": "apprenti",
+    "difficulty": "easy",
+    "type": "text",
+    "question": "Quel mot un réalisateur crie-t-il pour démarrer une prise ?",
+    "answer": "action"
+  }
+]
