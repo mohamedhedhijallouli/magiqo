@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Check, Upload, X, Sparkles } from "lucide-react";
+import { Plus, Trash2, Check, Upload, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { Input, Label, Textarea, Select, Switch } from "@/components/ui/Field";
 import Button from "@/components/ui/Button";
@@ -9,16 +9,24 @@ import { getActiveLicense } from "@/lib/auth";
 import { useToast } from "@/components/ui/Misc";
 import { taxonomyLabel, cn } from "@/lib/utils";
 import { LEVELS } from "@/lib/gameData";
-import { CARD_FAMILIES, RARITIES } from "@/lib/commanderCardThemes";
 import LanguageIndicator from "@/components/shared/LanguageIndicator";
+
+// Préréglages de difficulté (cahier des charges) : sélectionner un niveau
+// pré-remplit les trois champs de timing/pénalité ci-dessous, qui restent
+// ensuite librement modifiables (le préréglage n'est qu'un point de départ,
+// pas une contrainte figée).
+const DIFFICULTY_PRESETS = {
+  facile: { time_limit_seconds: 20, wrong_penalty_seconds: 10, hint_penalty_seconds: 10 },
+  moyen: { time_limit_seconds: 40, wrong_penalty_seconds: 20, hint_penalty_seconds: 20 },
+  difficile: { time_limit_seconds: 60, wrong_penalty_seconds: 30, hint_penalty_seconds: 30 },
+  complexe: { time_limit_seconds: 120, wrong_penalty_seconds: 45, hint_penalty_seconds: 45 },
+};
 
 const EMPTY = {
   question: "", type: "text", answer: "", choices: [], alt_answers: [],
-  hint: "", difficulty: "", riddle_type: "", age_group: "apprenti", language: "",
+  hint: "", riddle_type: "", age_group: "apprenti", language: "",
   is_active: true, image_url: "",
-  has_character_card: false, card_name: "", card_title: "", card_family: "carthaginois",
-  card_rarity: "legendaire", card_quote: "", card_lore: "",
-  card_skills: [], card_bonuses: [],
+  difficulty_level: "", time_limit_seconds: 0, wrong_penalty_seconds: 15, hint_penalty_seconds: 15,
 };
 
 export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
@@ -26,10 +34,11 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
   const toast = useToast();
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const activeLicense = getActiveLicense();
+  const defaultLang = (activeLicense?.languages?.[0] || "FR").toUpperCase();
 
   useEffect(() => {
     if (open) {
-      const defaultLang = (getActiveLicense()?.languages?.[0] || "FR").toUpperCase();
       setForm(
         riddle
           ? { ...EMPTY, ...riddle }
@@ -40,6 +49,11 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
 
   function set(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function applyDifficultyPreset(level) {
+    const preset = DIFFICULTY_PRESETS[level];
+    setForm((f) => ({ ...f, difficulty_level: level, ...(preset || {}) }));
   }
 
   function updateChoice(index, value) {
@@ -62,32 +76,6 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
   function addAltAnswer() {
     set("alt_answers", [...(form.alt_answers || []), ""]);
   }
-
-  // ---- Carte "Commandant" (compétences / bonus) -------------------------
-  function updateSkill(index, key, value) {
-    const skills = [...(form.card_skills || [])];
-    skills[index] = { ...skills[index], [key]: value };
-    set("card_skills", skills);
-  }
-  function addSkill() {
-    if ((form.card_skills || []).length >= 4) return;
-    set("card_skills", [...(form.card_skills || []), { icon: "✦", name: "", description: "" }]);
-  }
-  function removeSkill(index) {
-    set("card_skills", (form.card_skills || []).filter((_, i) => i !== index));
-  }
-  function updateBonus(index, key, value) {
-    const bonuses = [...(form.card_bonuses || [])];
-    bonuses[index] = { ...bonuses[index], [key]: value };
-    set("card_bonuses", bonuses);
-  }
-  function addBonus() {
-    if ((form.card_bonuses || []).length >= 3) return;
-    set("card_bonuses", [...(form.card_bonuses || []), { icon: "sparkles", label: "" }]);
-  }
-  function removeBonus(index) {
-    set("card_bonuses", (form.card_bonuses || []).filter((_, i) => i !== index));
-  }
   function removeAltAnswer(index) {
     set("alt_answers", (form.alt_answers || []).filter((_, i) => i !== index));
   }
@@ -101,9 +89,12 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
   async function handleSave() {
     setSaving(true);
     try {
-      const payload = { ...form, alt_answers: (form.alt_answers || []).filter((a) => a.trim()) };
-      if (riddle) await Riddles.update(riddle.id, { ...payload, license_code: riddle.license_code || getAdminActiveLicenseCode() });
-      else await Riddles.create({ ...payload, license_code: getAdminActiveLicenseCode() });
+      const payload = { ...form };
+      if (riddle) {
+        await Riddles.update(riddle.id, { ...payload, license_code: riddle.license_code || getAdminActiveLicenseCode() });
+      } else {
+        await Riddles.create({ ...payload, license_code: getAdminActiveLicenseCode() });
+      }
       toast(t("common_saved"));
       onClose(true);
     } finally {
@@ -112,53 +103,14 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
   }
 
   return (
-    <Modal open={open} onClose={() => onClose(false)} title={riddle ? t("rm_title_edit") : t("rm_title_new")} maxWidth="max-w-xl">
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <LanguageIndicator value={form.language} onChange={(l) => set("language", l)} />
-      </div>
-
+    <Modal open={open} onClose={() => onClose(false)} title={riddle ? t("rm_edit") : t("rm_new")}>
       <div className="mb-4">
-        <Label>{t("oe_riddle_question")}</Label>
+        <Label>{t("rm_question")}</Label>
         <Textarea value={form.question} onChange={(e) => set("question", e.target.value)} rows={2} />
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4 mb-4">
-        <div>
-          <Label>{t("rm_type")}</Label>
-          <Select value={form.riddle_type} onChange={(e) => set("riddle_type", e.target.value)}>
-            <option value="">—</option>
-            {riddleTypes.map((rt) => (
-              <option key={rt.slug} value={rt.slug}>{rt.emoji} {taxonomyLabel(rt, t)}</option>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <Label>{t("rm_age_group")}</Label>
-          <Select value={form.age_group} onChange={(e) => set("age_group", e.target.value)}>
-            {LEVELS.map((l) => (
-              <option key={l.value} value={l.value}>{l.emoji} {t(l.labelKey)} · {t(l.ageRangeKey)}</option>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <Label>{t("rm_difficulty")}</Label>
-          <Select value={form.difficulty} onChange={(e) => set("difficulty", e.target.value)}>
-            <option value="">{t("rm_difficulty_none")}</option>
-            <option value="easy">{t("rm_difficulty_easy")}</option>
-            <option value="medium">{t("rm_difficulty_medium")}</option>
-            <option value="hard">{t("rm_difficulty_hard")}</option>
-          </Select>
-        </div>
-      </div>
-
       <div className="mb-4">
-        <Label>{t("rm_hint")}</Label>
-        <Textarea value={form.hint} onChange={(e) => set("hint", e.target.value)} rows={1} />
-      </div>
-
-      <div className="mb-4">
-        <Label>{t("rm_reveal_photo")}</Label>
-        <p className="text-xs text-muted mb-2">{t("rm_reveal_photo_hint")}</p>
+        <Label>{t("rm_image")}</Label>
         <div className="flex items-center gap-3">
           {form.image_url && (
             <div className="relative">
@@ -181,175 +133,137 @@ export default function RiddleEditor({ open, onClose, riddle, riddleTypes }) {
         </div>
       </div>
 
-      <div className="mb-4 p-4 rounded-xl border border-void-border bg-white/[0.02]">
-        <div className="flex items-center justify-between mb-1">
-          <Label className="flex items-center gap-1.5 mb-0"><Sparkles size={14} className="text-gold-bright" /> {t("cc_editor_title")}</Label>
-          <Switch checked={form.has_character_card} onChange={(v) => set("has_character_card", v)} />
-        </div>
-        <p className="text-xs text-muted mb-3">{t("cc_editor_hint")}</p>
-
-        {form.has_character_card && (
-          <div className="flex flex-col gap-3">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <Label>{t("cc_name")}</Label>
-                <Input value={form.card_name} onChange={(e) => set("card_name", e.target.value)} placeholder="Amilcar Barca" />
-              </div>
-              <div>
-                <Label>{t("cc_title")}</Label>
-                <Input value={form.card_title} onChange={(e) => set("card_title", e.target.value)} placeholder="Stratège de Carthage" />
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <Label>{t("cc_family")}</Label>
-                <Select value={form.card_family} onChange={(e) => set("card_family", e.target.value)}>
-                  {CARD_FAMILIES.map((f) => (
-                    <option key={f.slug} value={f.slug}>{f.emoji} {f.label}</option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label>{t("cc_rarity")}</Label>
-                <Select value={form.card_rarity} onChange={(e) => set("card_rarity", e.target.value)}>
-                  {RARITIES.map((r) => (
-                    <option key={r.slug} value={r.slug}>{"⭐".repeat(r.stars)} {r.label}</option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label>{t("cc_quote")}</Label>
-              <Input value={form.card_quote} onChange={(e) => set("card_quote", e.target.value)} placeholder={t("cc_quote_placeholder")} />
-            </div>
-
-            <div>
-              <Label>{t("cc_lore")}</Label>
-              <Textarea value={form.card_lore} onChange={(e) => set("card_lore", e.target.value)} rows={2} />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <Label className="mb-0">{t("cc_skills")} ({(form.card_skills || []).length}/4)</Label>
-                {(form.card_skills || []).length < 4 && (
-                  <Button type="button" variant="ghost" size="sm" onClick={addSkill}><Plus size={13} /> {t("common_add")}</Button>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                {(form.card_skills || []).map((s, i) => (
-                  <div key={i} className="flex gap-2 items-start">
-                    <Input className="w-14 text-center" value={s.icon} onChange={(e) => updateSkill(i, "icon", e.target.value)} placeholder="✦" />
-                    <div className="flex-1 flex flex-col gap-1.5">
-                      <Input value={s.name} onChange={(e) => updateSkill(i, "name", e.target.value)} placeholder={t("cc_skill_name_placeholder")} />
-                      <Input value={s.description} onChange={(e) => updateSkill(i, "description", e.target.value)} placeholder={t("cc_skill_desc_placeholder")} />
-                    </div>
-                    <button onClick={() => removeSkill(i)} className="text-muted hover:text-ember-bright mt-2"><X size={15} /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <Label className="mb-0">{t("cc_bonuses")} ({(form.card_bonuses || []).length}/3)</Label>
-                {(form.card_bonuses || []).length < 3 && (
-                  <Button type="button" variant="ghost" size="sm" onClick={addBonus}><Plus size={13} /> {t("common_add")}</Button>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                {(form.card_bonuses || []).map((b, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Select className="w-32" value={b.icon} onChange={(e) => updateBonus(i, "icon", e.target.value)}>
-                      <option value="swords">⚔️ {t("cc_bonus_icon_attack")}</option>
-                      <option value="shield">🛡️ {t("cc_bonus_icon_defense")}</option>
-                      <option value="coins">💰 {t("cc_bonus_icon_resources")}</option>
-                      <option value="sparkles">✨ {t("cc_bonus_icon_other")}</option>
-                    </Select>
-                    <Input className="flex-1" value={b.label} onChange={(e) => updateBonus(i, "label", e.target.value)} placeholder={t("cc_bonus_label_placeholder")} />
-                    <button onClick={() => removeBonus(i)} className="text-muted hover:text-ember-bright"><X size={15} /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       <div className="flex gap-2 mb-3">
-        <button
-          type="button"
-          onClick={() => set("type", "text")}
-          className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold border", form.type === "text" ? "border-arcane text-arcane bg-arcane/10" : "border-void-border text-muted")}
-        >
-          {t("riddle_answer_text")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setForm((f) => ({ ...f, type: "choice", choices: f.choices?.length ? f.choices : ["", ""] }))}
-          className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold border", form.type === "choice" ? "border-arcane text-arcane bg-arcane/10" : "border-void-border text-muted")}
-        >
-          {t("riddle_answer_choice")}
-        </button>
+        {["text", "choice"].map((ty) => (
+          <button
+            key={ty}
+            type="button"
+            onClick={() => set("type", ty)}
+            className={cn(
+              "px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-colors",
+              form.type === ty ? "border-arcane bg-arcane/15 text-parchment" : "border-void-border text-muted"
+            )}
+          >
+            {ty === "text" ? t("rm_type_text") : t("rm_type_choice")}
+          </button>
+        ))}
       </div>
 
       {form.type === "choice" ? (
-        <div className="flex flex-col gap-1.5 mb-4">
-          {(form.choices || []).map((c, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => set("answer", c)}
-                className={cn(
-                  "w-5 h-5 rounded-full border shrink-0 flex items-center justify-center",
-                  form.answer === c && c !== "" ? "bg-emerald border-emerald" : "border-void-border"
-                )}
-              >
-                {form.answer === c && c !== "" && <Check size={11} className="text-void" />}
-              </button>
-              <Input value={c} onChange={(e) => updateChoice(i, e.target.value)} placeholder={`${t("oe_riddle_answer")} ${i + 1}`} className="flex-1" />
-              <button type="button" onClick={() => removeChoice(i)} className="text-muted hover:text-ember-bright">
-                <Trash2 size={13} />
-              </button>
-            </div>
-          ))}
-          <Button type="button" variant="ghost" size="sm" onClick={addChoice} className="self-start mt-1">
-            <Plus size={12} /> {t("oe_riddle_answer")}
-          </Button>
-        </div>
-      ) : (
         <div className="mb-4">
-          <Label>{t("oe_riddle_answer")}</Label>
-          <Input value={form.answer} onChange={(e) => set("answer", e.target.value)} />
-
+          <Label>{t("rm_choices")}</Label>
+          <div className="flex flex-col gap-2">
+            {(form.choices || []).map((c, i) => (
+              <div key={i} className="flex gap-2">
+                <Input value={c} onChange={(e) => updateChoice(i, e.target.value)} placeholder={`${t("rm_choice")} ${i + 1}`} />
+                <button onClick={() => removeChoice(i)} className="text-muted hover:text-ember-bright"><X size={16} /></button>
+              </div>
+            ))}
+          </div>
+          <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={addChoice}><Plus size={13} /> {t("common_add")}</Button>
           <div className="mt-3">
-            <Label>{t("rm_alt_answers")}</Label>
-            <div className="flex flex-col gap-1.5">
-              {(form.alt_answers || []).map((a, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input value={a} onChange={(e) => updateAltAnswer(i, e.target.value)} className="flex-1" />
-                  <button type="button" onClick={() => removeAltAnswer(i)} className="text-muted hover:text-ember-bright">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+            <Label>{t("rm_correct_answer")}</Label>
+            <Select value={form.answer} onChange={(e) => set("answer", e.target.value)}>
+              <option value="">{t("rm_pick_correct")}</option>
+              {(form.choices || []).filter(Boolean).map((c, i) => (
+                <option key={i} value={c}>{c}</option>
               ))}
-              <Button type="button" variant="ghost" size="sm" onClick={addAltAnswer} className="self-start mt-1">
-                <Plus size={12} /> {t("rm_add_alt_answer")}
-              </Button>
-            </div>
+            </Select>
           </div>
         </div>
+      ) : (
+        <>
+          <div className="mb-4">
+            <Label>{t("rm_answer")}</Label>
+            <Input value={form.answer} onChange={(e) => set("answer", e.target.value)} />
+          </div>
+          <div className="mb-4">
+            <Label>{t("rm_alt_answers")}</Label>
+            <div className="flex flex-col gap-2">
+              {(form.alt_answers || []).map((a, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input value={a} onChange={(e) => updateAltAnswer(i, e.target.value)} />
+                  <button onClick={() => removeAltAnswer(i)} className="text-muted hover:text-ember-bright"><X size={16} /></button>
+                </div>
+              ))}
+            </div>
+            <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={addAltAnswer}><Plus size={13} /> {t("rm_add_alt_answer")}</Button>
+          </div>
+        </>
       )}
 
+      <div className="mb-4">
+        <Label>{t("rm_hint")}</Label>
+        <Textarea value={form.hint} onChange={(e) => set("hint", e.target.value)} rows={1} />
+      </div>
+
+      <div className="mb-4 p-4 rounded-xl border border-void-border bg-white/[0.02]">
+        <Label>{t("rm_difficulty_level")}</Label>
+        <p className="text-xs text-muted mb-2">{t("rm_difficulty_level_hint")}</p>
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          {Object.keys(DIFFICULTY_PRESETS).map((lvl) => (
+            <button
+              key={lvl}
+              type="button"
+              onClick={() => applyDifficultyPreset(lvl)}
+              className={cn(
+                "px-2 py-2 rounded-lg border-2 text-xs font-semibold transition-colors",
+                form.difficulty_level === lvl ? "border-arcane bg-arcane/15 text-parchment" : "border-void-border text-muted"
+              )}
+            >
+              {t(`rm_difficulty_${lvl}`)}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <Label className="text-xs">{t("rm_time_limit_seconds")}</Label>
+            <Input type="number" min={0} value={form.time_limit_seconds} onChange={(e) => set("time_limit_seconds", Number(e.target.value) || 0)} />
+          </div>
+          <div>
+            <Label className="text-xs">{t("rm_wrong_penalty_seconds")}</Label>
+            <Input type="number" min={0} value={form.wrong_penalty_seconds} onChange={(e) => set("wrong_penalty_seconds", Number(e.target.value) || 0)} />
+          </div>
+          <div>
+            <Label className="text-xs">{t("rm_hint_penalty_seconds")}</Label>
+            <Input type="number" min={0} value={form.hint_penalty_seconds} onChange={(e) => set("hint_penalty_seconds", Number(e.target.value) || 0)} />
+          </div>
+        </div>
+        <p className="text-[11px] text-muted mt-2">{t("rm_zero_unlimited_hint")}</p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3 mb-4">
+        <div>
+          <Label>{t("rm_riddle_type")}</Label>
+          <Select value={form.riddle_type} onChange={(e) => set("riddle_type", e.target.value)}>
+            {riddleTypes.map((rt) => (
+              <option key={rt.slug} value={rt.slug}>{rt.emoji} {taxonomyLabel(rt, t)}</option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label>{t("rm_age_group")}</Label>
+          <Select value={form.age_group} onChange={(e) => set("age_group", e.target.value)}>
+            {LEVELS.map((l) => (
+              <option key={l.value} value={l.value}>{l.emoji} {t(l.labelKey)}</option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <LanguageIndicator language={form.language} onChange={(v) => set("language", v)} />
+      </div>
+
       <div className="flex items-center justify-between mb-6">
-        <Label className="mb-0">{t("rm_is_active")}</Label>
+        <Label className="mb-0">{t("rm_active")}</Label>
         <Switch checked={form.is_active} onChange={(v) => set("is_active", v)} />
       </div>
 
       <div className="flex justify-end gap-3">
         <Button variant="ghost" onClick={() => onClose(false)}>{t("common_cancel")}</Button>
-        <Button onClick={handleSave} disabled={!form.question.trim() || !form.answer.trim() || saving}>
+        <Button onClick={handleSave} disabled={!form.question || !form.answer || saving}>
           {t("common_save")}
         </Button>
       </div>

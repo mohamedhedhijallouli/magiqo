@@ -18,8 +18,14 @@ const EMPTY = {
   penalty_per_hint_seconds: 60, penalty_per_wrong_code_seconds: 20,
   penalty_per_wrong_riddle_seconds: 15, riddle_time_limit_seconds: 0,
   suspension_after_errors: 0, suspension_duration_seconds: 15,
+  game_mode: "standard",
   mode: "indoor", parent_code: "",
 };
+
+const GAME_MODES = [
+  { value: "standard", labelKey: "pe_game_mode_standard", icon: "🗺️" },
+  { value: "riddles_only", labelKey: "pe_game_mode_riddles_only", icon: "❓" },
+];
 
 const KIND_ICON = { object: "📦", animal: "🐾", place: "🏛️" };
 
@@ -250,6 +256,24 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
     [riddleIds, riddles]
   );
 
+  // Mode « Devinettes » : le temps limite du parcours = somme des temps des
+  // devinettes, arrondie à la minute supérieure.
+  const isRiddlesOnlyMode = form.game_mode === "riddles_only";
+  const computedTimeLimitMinutes = useMemo(() => {
+    const totalSeconds = selectedRiddles.reduce((sum, r) => sum + (r.time_limit_seconds || 0), 0);
+    return Math.ceil(totalSeconds / 60);
+  }, [selectedRiddles]);
+
+  function setGameMode(value) {
+    if (value === "riddles_only") {
+      const hadStops = form.sequence.some((e) => e.type === "stop");
+      setForm((f) => ({ ...f, game_mode: value, sequence: f.sequence.filter((e) => e.type !== "stop") }));
+      if (hadStops) toast(t("pe_game_mode_stops_removed"));
+    } else {
+      set("game_mode", value);
+    }
+  }
+
   const availableRiddles = useMemo(
     () =>
       riddles.filter(
@@ -294,6 +318,7 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
         riddle_ids: riddleIds,
         license_code: licenseCode,
       };
+      if (isRiddlesOnlyMode) payload.time_limit_minutes = computedTimeLimitMinutes;
       if (adminMode && !parcours) {
         payload.created_by_admin = true;
         // Un parcours du Maître du Jeu non associé à un tuteur précis n'a
@@ -383,6 +408,29 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
           {form.mode === "card_game" && <p className="text-xs text-arcane mt-1.5">{t("pe_mode_card_game_hint")}</p>}
         </div>
 
+        <div className="sm:col-span-2">
+          <Label>{t("pe_game_mode")}</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {GAME_MODES.map((m) => {
+              const active = (form.game_mode || "standard") === m.value;
+              return (
+                <button
+                  type="button"
+                  key={m.value}
+                  onClick={() => setGameMode(m.value)}
+                  className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs transition-colors ${
+                    active ? "bg-gold/15 border-gold-dim text-gold-bright" : "bg-void/40 border-void-border text-muted hover:border-white/25"
+                  }`}
+                >
+                  <span className="text-lg">{m.icon}</span>
+                  {t(m.labelKey)}
+                </button>
+              );
+            })}
+          </div>
+          {isRiddlesOnlyMode && <p className="text-xs text-arcane mt-1.5">{t("pe_game_mode_riddles_only_hint")}</p>}
+        </div>
+
         {adminMode && (
           <div className="sm:col-span-2">
             <Label>{t("pe_tutor")}</Label>
@@ -401,9 +449,13 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
 
       {/* Résumé de composition — §11 du cahier des charges */}
       <div className="mb-6 flex flex-wrap gap-2 p-3 bg-void/30 border border-void-border rounded-xl">
-        <Badge color="ember">🧩 {stopCounts.object || 0} {t("pe_summary_objects")}</Badge>
-        <Badge color="gold">🐾 {stopCounts.animal || 0} {t("pe_summary_animals")}</Badge>
-        <Badge color="arcane">📍 {stopCounts.place || 0} {t("pe_summary_places")}</Badge>
+        {!isRiddlesOnlyMode && (
+          <>
+            <Badge color="ember">🧩 {stopCounts.object || 0} {t("pe_summary_objects")}</Badge>
+            <Badge color="gold">🐾 {stopCounts.animal || 0} {t("pe_summary_animals")}</Badge>
+            <Badge color="arcane">📍 {stopCounts.place || 0} {t("pe_summary_places")}</Badge>
+          </>
+        )}
         <Badge color="emerald">❓ {selectedRiddles.length} {t("pe_summary_riddles")}</Badge>
       </div>
 
@@ -486,6 +538,7 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
         )}
       </div>
 
+      {!isRiddlesOnlyMode && (
       <div className="mb-6">
         <Label>{activeKind ? t(KIND_LABELS[activeKind].stopsLabelKey) : t("pe_objects")}</Label>
         <p className="text-xs text-muted mb-2">{t("pe_add_stop_hint")}</p>
@@ -512,6 +565,7 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
           )}
         </div>
       </div>
+      )}
 
       {/* Devinettes du parcours — §7 du cahier des charges : bloc totalement
           indépendant des éléments de chasse, filtré par tranche d'âge (celle
@@ -572,11 +626,21 @@ export default function ParcoursEditor({ open, onClose, objects = [], animals = 
       <div className="mb-6">
         <Label>{t("pe_timing")}</Label>
         <div className="grid sm:grid-cols-2 gap-3">
-          <NumberField label={t("pe_time_limit")} value={form.time_limit_minutes} onChange={(v) => set("time_limit_minutes", v)} />
-          <NumberField label={t("pe_penalty_hint")} value={form.penalty_per_hint_seconds} onChange={(v) => set("penalty_per_hint_seconds", v)} />
-          <NumberField label={t("pe_penalty_wrong")} value={form.penalty_per_wrong_code_seconds} onChange={(v) => set("penalty_per_wrong_code_seconds", v)} />
-          <NumberField label={t("pe_penalty_riddle")} value={form.penalty_per_wrong_riddle_seconds} onChange={(v) => set("penalty_per_wrong_riddle_seconds", v)} />
-          <NumberField label={t("pe_riddle_time_limit")} value={form.riddle_time_limit_seconds} onChange={(v) => set("riddle_time_limit_seconds", v)} />
+          {isRiddlesOnlyMode ? (
+            <div>
+              <Label>{t("pe_time_limit")}</Label>
+              <Input type="number" value={computedTimeLimitMinutes} readOnly className="opacity-70" />
+              <p className="text-xs text-muted mt-1">{t("pe_time_limit_auto_hint")}</p>
+            </div>
+          ) : (
+            <>
+              <NumberField label={t("pe_time_limit")} value={form.time_limit_minutes} onChange={(v) => set("time_limit_minutes", v)} />
+              <NumberField label={t("pe_penalty_hint")} value={form.penalty_per_hint_seconds} onChange={(v) => set("penalty_per_hint_seconds", v)} />
+              <NumberField label={t("pe_penalty_wrong")} value={form.penalty_per_wrong_code_seconds} onChange={(v) => set("penalty_per_wrong_code_seconds", v)} />
+              <NumberField label={t("pe_penalty_riddle")} value={form.penalty_per_wrong_riddle_seconds} onChange={(v) => set("penalty_per_wrong_riddle_seconds", v)} />
+              <NumberField label={t("pe_riddle_time_limit")} value={form.riddle_time_limit_seconds} onChange={(v) => set("riddle_time_limit_seconds", v)} />
+            </>
+          )}
           <NumberField label={t("pe_suspension")} value={form.suspension_after_errors} onChange={(v) => set("suspension_after_errors", v)} />
           <NumberField label={t("pe_suspension_duration")} value={form.suspension_duration_seconds} onChange={(v) => set("suspension_duration_seconds", v)} />
         </div>

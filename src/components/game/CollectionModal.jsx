@@ -2,14 +2,13 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { X, KeyRound } from "lucide-react";
 import { useLanguage } from "@/lib/LanguageContext";
-import { getPlayerCollection } from "@/lib/collection";
-import { getFamilyTheme, getRarity } from "@/lib/commanderCardThemes";
+import { getPlayerCollection } from "@/lib/cardProgression";
+import CardDisplay from "@/components/game/CardDisplay";
 
-// Galerie compacte des cartes obtenues par un joueur — accessible depuis
-// l'écran de victoire (le player_id et le license_code sont déjà connus à
-// ce moment de la session, pas besoin de redemander le code). Volontairement
-// indépendante des 6 VictoryScreen par archétype : un seul point d'ajout
-// dans Play.jsx plutôt que six.
+// Galerie des cartes obtenues par un joueur — accessible depuis l'écran de
+// victoire (le player_id est déjà connu à ce moment de la session, pas
+// besoin de redemander le code). Collection UNIVERSELLE (pas de
+// cloisonnement par licence) — voir lib/cardProgression.js.
 export default function CollectionModal({ playerId, playerCode, onClose }) {
   const { t } = useLanguage();
   const [cards, setCards] = useState(null);
@@ -41,26 +40,10 @@ export default function CollectionModal({ playerId, playerCode, onClose }) {
           ) : cards.length === 0 ? (
             <p className="text-center text-muted text-sm py-10">{t("coll_empty")}</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {cards.map((c) => {
-                const theme = getFamilyTheme(c.card_family);
-                const rarity = getRarity(c.card_rarity);
-                return (
-                  <div
-                    key={c.id}
-                    className="rounded-xl border p-3 text-center"
-                    style={{ background: `rgb(${theme.panel})`, borderColor: `rgb(${theme.gold} / 0.4)` }}
-                  >
-                    <span className="text-3xl">{theme.emoji}</span>
-                    <p className="text-xs font-semibold mt-1 truncate" style={{ color: `rgb(${theme.goldBright})` }}>{c.card_name}</p>
-                    <p className="text-[10px]" style={{ color: `rgb(${theme.gold} / 0.7)` }}>{"⭐".repeat(rarity.stars)}</p>
-                    <p className="text-lg font-bold mt-1" style={{ color: `rgb(${theme.goldBright})` }}>{c.level}</p>
-                    {c.times_earned > 1 && (
-                      <p className="text-[9px] text-muted mt-0.5">×{c.times_earned}</p>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="flex flex-wrap gap-3 justify-center">
+              {cards.map((c) => (
+                <CardDisplay key={c.id} card={{ name: c.card_name, illustration_url: c.card_illustration }} level={c.level} />
+              ))}
             </div>
           )}
         </div>

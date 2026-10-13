@@ -1,25 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
-import StarsBackground from "@/components/game/StarsBackground";
-import MagiQoLogo from "@/components/game/MagiQoLogo";
-import LanguageSwitcher from "@/components/shared/LanguageSwitcher";
-import TicketEntry from "@/components/game/TicketEntry";
 import ParcoursCodeEntry from "@/components/game/ParcoursCodeEntry";
+import TicketEntry from "@/components/game/TicketEntry";
 import PlayerNameForm from "@/components/game/PlayerNameForm";
 import PlayerCodeIntro from "@/components/game/PlayerCodeIntro";
+import ChooseCardScreen from "@/components/game/ChooseCardScreen";
+import CardXpResultScreen from "@/components/game/CardXpResultScreen";
 import RiddleStep from "@/components/game/RiddleStep";
+import StarsBackground from "@/components/game/StarsBackground";
+import Timer from "@/components/game/Timer";
 import ObjectCard from "@/components/game/ObjectCard";
 import CodeEntry from "@/components/game/CodeEntry";
 import RevealCard from "@/components/game/RevealCard";
-import Timer from "@/components/game/Timer";
 import VictoryScreen from "@/components/game/VictoryScreen";
-import { resolveStops, resolveRiddles, RiddleTypes, Quests, PlayerTickets } from "@/lib/db";
-import { calculateScore, getBadge } from "@/lib/gameData";
-import { useLanguage } from "@/lib/LanguageContext";
-import { validateAnyLicense, isUnlimited } from "@/lib/license";
 import PhotoChallenge from "@/components/game/PhotoChallenge";
+import CollectionModal from "@/components/game/CollectionModal";
 import { WorldThemeProvider } from "@/lib/WorldThemeContext";
 import { getWorld } from "@/lib/worlds";
 import DossierBackground from "@/components/game/archetypes/dossier/DossierBackground";
@@ -47,19 +42,15 @@ import DashboardObjectCard from "@/components/game/archetypes/dashboard/Dashboar
 import DashboardCodeEntry from "@/components/game/archetypes/dashboard/DashboardCodeEntry";
 import DashboardRevealCard from "@/components/game/archetypes/dashboard/DashboardRevealCard";
 import DashboardVictoryScreen from "@/components/game/archetypes/dashboard/DashboardVictoryScreen";
-import CommanderCard from "@/components/game/CommanderCard";
-import CollectionModal from "@/components/game/CollectionModal";
-import { computeCardLevel } from "@/lib/commanderCardThemes";
-import { findOrCreatePlayer, recordCardObtained } from "@/lib/collection";
+import { resolveStops, resolveRiddles, RiddleTypes, Quests, PlayerTickets, ParcoursTypes, Cards, PlayerCards } from "@/lib/db";
+import { calculateScore, getBadge } from "@/lib/gameData";
+import { useLanguage } from "@/lib/LanguageContext";
+import { validateAnyLicense, isUnlimited } from "@/lib/license";
+import { findOrCreatePlayer, applyXpToCard, computeXpGained } from "@/lib/cardProgression";
 
 // Chaque interfaceArchetype (voir lib/worlds.js) peut fournir ses propres
 // variantes des écrans de jeu. Un archétype sans entrée ici, ou une entrée
-// sans une clé donnée, retombe sur le composant par défaut correspondant
-// (StarsBackground / ObjectCard / CodeEntry / RevealCard / VictoryScreen)
-// — c'est ce qui permet d'ajouter nettement plus de Worlds que d'archétypes
-// sans jamais toucher à Play.jsx. "map" est partagé par 4 Worlds (Carte au
-// Trésor, Carte du Capitaine, Parchemin du Royaume, City Explorer) : seule
-// leur palette change (worlds.js), la mise en page est commune.
+// sans une clé donnée, retombe sur le composant par défaut correspondant.
 const ARCHETYPE_COMPONENTS = {
   dossier: {
     Background: DossierBackground,
@@ -98,48 +89,49 @@ const ARCHETYPE_COMPONENTS = {
   },
 };
 
-const phaseVariants = {
-  initial: { opacity: 0, y: 28, scale: 0.96 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -20, scale: 0.97 },
-};
-
-// A stop can come from GameObjects (object_id), Animals or Places (code) —
-// this normalizes the field so the rest of the flow never has to care which.
-function normalizeStop(stop) {
+function normalizeStop(o) {
   return {
-    ...stop,
-    displayName: stop.fantasy_name || stop.magic_name || stop.gaming_name || stop.real_name,
-    entryCode: stop.object_id || stop.code,
+    ...o,
+    displayName: o.fantasy_name || o.real_name || o.name,
+    entryCode: o.object_id || o.code,
   };
 }
+
+const phaseVariants = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -16 },
+};
 
 export default function Play() {
   const { t, setLang } = useLanguage();
   // Le joueur saisit d'abord le code du parcours ("code") : c'est ce qui
-  // permet de déterminer la langue de jeu (héritée du tuteur propriétaire
-  // du parcours) et si un ticket joueur est requis, AVANT de demander quoi
-  // que ce soit d'autre. Le ticket n'est ensuite demandé que si la licence
-  // du Maître du Jeu n'est pas forfaitaire (joueurs illimités) — voir
-  // handleParcoursSelect.
-  const [phase, setPhase] = useState("code"); // code | ticket | name | riddle | object | reveal | victory
+  // permet de déterminer la langue de jeu et si un ticket/une carte
+  // Personnage sont requis, AVANT de demander quoi que ce soit d'autre.
+  const [phase, setPhase] = useState("code"); // code | ticket | name | player-code-intro | choose-card | riddle | object | reveal | card-xp-result | victory
   const [ticketRequired, setTicketRequired] = useState(false);
   const [parent, setParent] = useState(null);
   const [parcours, setParcoursData] = useState(null);
   const [player, setPlayer] = useState(null);
   // Séquence de jeu unifiée : mélange librement devinettes et objets/lieux/
-  // animaux, dans l'ordre choisi par le Maître du Jeu au moment de la
-  // création du parcours (ex : 1 devinette → 2 lieux → 3 devinettes...).
-  // Chaque entrée : { kind: "stop" | "riddle", data }.
+  // animaux, dans l'ordre choisi par le Maître du Jeu. Chaque entrée :
+  // { kind: "stop" | "riddle", data }.
   const [sequence, setSequence] = useState([]);
   const [stepIndex, setStepIndex] = useState(0);
-  // Niveau calculé pour la carte Commandant en cours de révélation (voir
-  // handleRiddleResolved) — dépend de la performance du joueur sur CETTE
-  // devinette précise, pas du score global du parcours.
-  const [cardLevel, setCardLevel] = useState(90);
-  const [cardStatus, setCardStatus] = useState(null); // 'new' | 'level_up' | 'unchanged'
   const [codeError, setCodeError] = useState(null);
   const [collectionOpen, setCollectionOpen] = useState(false);
+
+  // ---- Système de cartes Personnage (XP/niveau/rareté) -------------------
+  // Un type de parcours peut être lié à un univers de cartes (voir
+  // ParcoursTypesManager.jsx). Si c'est le cas, le joueur choisit UN
+  // personnage avant de commencer, et cette carte gagne de l'XP à la fin du
+  // parcours selon le temps économisé — voir lib/cardProgression.js.
+  const [cardUniverseSlug, setCardUniverseSlug] = useState("");
+  const [availableCards, setAvailableCards] = useState([]);
+  const [playerCardLevels, setPlayerCardLevels] = useState({});
+  const [chosenCardId, setChosenCardId] = useState(null);
+  const [cardXpResult, setCardXpResult] = useState(null); // { card, previousLevel, newLevel, xpGained }
+  const hasCollectibleCards = !!cardUniverseSlug;
 
   const [elapsed, setElapsed] = useState(0);
   const [penaltyCount, setPenaltyCount] = useState(0);
@@ -152,28 +144,12 @@ export default function Play() {
     setPhase("name");
   }
 
-  useEffect(() => {
-    if (phase !== "object" && phase !== "riddles") return;
-    if (suspended) return;
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(id);
-  }, [phase, suspended]);
-
-  useEffect(() => {
-    if (!suspended) return;
-    if (suspendedRemaining <= 0) {
-      setSuspended(false);
-      return;
-    }
-    const id = setTimeout(() => setSuspendedRemaining((r) => r - 1), 1000);
-    return () => clearTimeout(id);
-  }, [suspended, suspendedRemaining]);
-
   async function handleParcoursSelect(foundParent, foundParcours) {
-    const [resolved, resolvedRiddles, riddleTypes] = await Promise.all([
+    const [resolved, resolvedRiddles, riddleTypes, parcoursTypes] = await Promise.all([
       resolveStops(foundParcours.object_ids),
       resolveRiddles(foundParcours.riddle_ids || []),
       RiddleTypes.list(),
+      ParcoursTypes.list(),
     ]);
     const typeLabel = (slug) => riddleTypes.find((rt) => rt.slug === slug)?.label || "";
     const stopsById = new Map(resolved.map((o) => [o.id, normalizeStop(o)]));
@@ -182,8 +158,7 @@ export default function Play() {
     // Ordre de jeu : celui choisi dans le Créateur de Parcours
     // (foundParcours.sequence). Repli pour les parcours créés AVANT
     // l'introduction de l'ordonnancement combiné : toutes les devinettes
-    // d'abord, puis tous les objets/lieux/animaux — comportement
-    // strictement identique à l'ancien système, rien ne change pour eux.
+    // d'abord, puis tous les objets/lieux/animaux.
     const rawSequence =
       foundParcours.sequence?.length > 0
         ? foundParcours.sequence
@@ -203,30 +178,31 @@ export default function Play() {
     setParcoursData(foundParcours);
     setSequence(builtSequence);
 
+    // Univers de cartes lié au TYPE de ce parcours (voir
+    // ParcoursTypesManager.jsx) — détermine si un personnage doit être
+    // choisi avant de jouer.
+    const matchingType = parcoursTypes.find((pt) => pt.slug === foundParcours.parcours_type);
+    setCardUniverseSlug(matchingType?.card_universe || "");
+
     // On valide la licence une seule fois, avant de décider à la fois de la
-    // langue et du besoin de ticket (voir les deux usages ci-dessous).
+    // langue et du besoin de ticket.
     let licenseCheck = null;
     if (foundParcours.license_code) {
       try {
         licenseCheck = await validateAnyLicense(foundParcours.license_code);
       } catch {
-        licenseCheck = null; // en cas de doute, traité comme "non forfaitaire" plus bas
+        licenseCheck = null;
       }
     }
     const isForfaitaire = !!(licenseCheck?.valid && isUnlimited(licenseCheck.maxPlayers));
 
     // La langue de jeu suit le tuteur propriétaire du parcours — SAUF pour
     // une licence forfaitaire, où l'on respecte la langue déjà choisie par
-    // le joueur sur la page d'accueil de MagiQo plutôt que de la lui
-    // changer sans le prévenir.
+    // le joueur sur la page d'accueil de MagiQo.
     if (!isForfaitaire && foundParent?.language) setLang(foundParent.language.toLowerCase());
 
     // Le ticket joueur n'est requis que pour les licences NON forfaitaires
-    // (nombre de joueurs limité — voir lib/license.js) qui ont
-    // effectivement généré des tickets pour cette organisation. Une licence
-    // forfaitaire (joueurs illimités) n'a pas besoin de ce contrôle, et un
-    // Maître du Jeu qui n'a jamais utilisé cette fonctionnalité optionnelle
-    // ne doit pas se retrouver bloqué dessus.
+    // qui ont effectivement généré des tickets pour cette organisation.
     let needsTicket = false;
     if (!isForfaitaire && licenseCheck?.valid) {
       const tickets = await PlayerTickets.filter({ license_code: foundParcours.license_code });
@@ -236,24 +212,32 @@ export default function Play() {
     setPhase(needsTicket ? "ticket" : "name");
   }
 
+  // Démarre effectivement la partie (chrono + première étape) : appelé une
+  // fois que le joueur a fini toutes les étapes préalables (nom, éventuel
+  // choix de carte) — le temps passé sur CES écrans-là ne doit pas compter
+  // contre le joueur.
+  function beginGameplay() {
+    setStepIndex(0);
+    startRef.current = Date.now();
+    setPhase(sequence[0]?.kind === "riddle" ? "riddle" : "object");
+  }
+
   async function handlePlayerSubmit({ name, level, code }) {
-    // Si ce parcours ne contient aucune devinette à Carte Personnage, la
-    // notion de "code personnel"/collection n'a aucun sens ici : on ne crée
-    // pas de compte joueur inutile (voir hasCollectibleCards, qui masque
-    // aussi le champ correspondant dans PlayerNameForm).
+    // Si ce parcours n'est lié à aucun univers de cartes, la notion de
+    // "code personnel"/collection n'a aucun sens ici : on ne crée pas de
+    // compte joueur inutile (voir hasCollectibleCards, qui masque aussi le
+    // champ correspondant dans PlayerNameForm).
     if (!hasCollectibleCards) {
       setPlayer({ name, level });
-      setStepIndex(0);
-      startRef.current = Date.now();
-      setPhase(sequence[0]?.kind === "riddle" ? "riddle" : "object");
+      beginGameplay();
       return;
     }
 
     // Le compte joueur (prénom + code personnel) a une collection
-    // UNIVERSELLE — voir lib/collection.js. Un code fourni mais introuvable
-    // n'est jamais silencieusement remplacé par un nouveau profil : on
-    // affiche une erreur claire pour éviter de mélanger deux enfants
-    // différents.
+    // UNIVERSELLE — voir lib/cardProgression.js. Un code fourni mais
+    // introuvable n'est jamais silencieusement remplacé par un nouveau
+    // profil : on affiche une erreur claire pour éviter de mélanger deux
+    // enfants différents.
     const { player: foundPlayer, isNew, error } = await findOrCreatePlayer({ name, code, licenseCode: parcours?.license_code });
     if (error === "code_not_found") {
       setCodeError(true);
@@ -261,18 +245,41 @@ export default function Play() {
     }
     setCodeError(null);
     setPlayer({ name, level, id: foundPlayer.id, code: foundPlayer.code });
-    setStepIndex(0);
-    startRef.current = Date.now();
-    // Un nouveau profil vient d'être créé : on montre son code AVANT de
-    // commencer à jouer (et pas seulement dans "Ma collection", que le
-    // joueur pourrait ne jamais ouvrir) — sinon il n'a aucun moyen de le
-    // retrouver la prochaine fois. Un joueur qui a tapé son propre code
-    // (retour) le connaît déjà, pas besoin de l'interrompre.
-    setPhase(isNew ? "player-code-intro" : sequence[0]?.kind === "riddle" ? "riddle" : "object");
+
+    // Charge les cartes de l'univers lié + le niveau déjà atteint par ce
+    // joueur sur chacune (pour les afficher dans ChooseCardScreen).
+    const [cards, ownedCards] = await Promise.all([
+      Cards.filter({ universe: cardUniverseSlug, license_code: parcours.license_code, is_active: true }),
+      PlayerCards.filter({ player_id: foundPlayer.id }),
+    ]);
+    setAvailableCards(cards);
+    const levels = {};
+    ownedCards.forEach((oc) => { levels[oc.card_id] = oc.level; });
+    setPlayerCardLevels(levels);
+
+    if (isNew) {
+      // Un nouveau profil vient d'être créé : on montre son code AVANT de
+      // continuer (et pas seulement dans "Ma collection") — sinon il n'a
+      // aucun moyen de le retrouver la prochaine fois.
+      setPhase("player-code-intro");
+    } else if (cards.length > 0) {
+      setPhase("choose-card");
+    } else {
+      beginGameplay();
+    }
   }
 
   function handleCodeIntroContinue() {
-    setPhase(sequence[0]?.kind === "riddle" ? "riddle" : "object");
+    if (availableCards.length > 0) {
+      setPhase("choose-card");
+    } else {
+      beginGameplay();
+    }
+  }
+
+  function handleCardChosen(cardId) {
+    setChosenCardId(cardId);
+    beginGameplay();
   }
 
   const applyPenalty = useCallback(
@@ -299,33 +306,22 @@ export default function Play() {
   function handleWrongCode() {
     applyPenalty(parcours.penalty_per_wrong_code_seconds || 20);
   }
-  function handleWrongRiddle() {
-    applyPenalty(parcours.penalty_per_wrong_riddle_seconds || 15);
+  // Les pénalités de devinette appartiennent désormais à CHAQUE devinette
+  // (voir RiddleEditor.jsx / RiddleStep.jsx), plus à un réglage global du
+  // parcours — le montant est fourni directement par RiddleStep.
+  function handleWrongRiddle(amount) {
+    applyPenalty(amount || 0);
+  }
+  function handleRiddleHintUsed(amount) {
+    applyPenalty(amount || 0);
   }
 
-  // Une devinette résolue (bonne réponse ou chrono expiré) déclenche :
-  //  - la carte Commandant si elle en porte une (niveau calculé selon la
-  //    performance du joueur sur CETTE devinette précise, voir
-  //    computeCardLevel, PUIS confronté à la collection persistante du
-  //    joueur — voir recordCardObtained : le meilleur niveau jamais atteint
-  //    est conservé, avec un petit bonus à chaque doublon) ;
-  //  - sinon la révélation simple si elle a une photo (comme demandé :
-  //    "comme les objets, les lieux et les animaux") ;
-  //  - sinon on avance directement, sans écran intermédiaire.
-  async function handleRiddleResolved(meta = {}) {
+  // Une devinette résolue (bonne réponse ou chrono expiré) déclenche la
+  // révélation UNIQUEMENT si elle porte une photo (comme pour un objet/
+  // lieu/animal) ; sinon on avance directement.
+  function handleRiddleResolved() {
     const current = sequence[stepIndex];
-    if (current?.data?.has_character_card) {
-      const freshLevel = computeCardLevel(meta);
-      const { card, status } = await recordCardObtained({
-        playerId: player.id,
-        riddle: current.data,
-        computedLevel: freshLevel,
-        licenseCode: parcours.license_code,
-      });
-      setCardLevel(card.level);
-      setCardStatus(status);
-      setPhase("card-reveal");
-    } else if (current?.data?.image_url) {
+    if (current?.data?.image_url) {
       setPhase("reveal");
     } else {
       goNextStep();
@@ -333,8 +329,6 @@ export default function Play() {
   }
 
   function handleCodeCorrect() {
-    // Reward moment: the real photo is hidden throughout the riddle and only
-    // revealed once the code has actually been solved.
     setPhase("reveal");
   }
 
@@ -358,11 +352,32 @@ export default function Play() {
       current_step: sequence.length,
       parent_code: parent.parent_code,
       parcours_id: parcours.id,
-      // Le parcours peut appartenir à une licence différente de celle
-      // (éventuellement absente) de l'appareil du joueur : on hérite du
-      // license_code du PARCOURS joué, pas de l'appareil.
       license_code: parcours.license_code,
     });
+
+    // Progression de la carte Personnage choisie en début de partie (voir
+    // ChooseCardScreen) : XP gagnés selon le temps économisé par rapport au
+    // temps prévu du parcours (10 XP max, voir lib/cardProgression.js).
+    if (chosenCardId) {
+      const chosenCard = availableCards.find((c) => c.id === chosenCardId);
+      const plannedSeconds = (parcours.time_limit_minutes || 0) * 60;
+      const xpGained = computeXpGained(plannedSeconds, totalTime);
+      const result = await applyXpToCard({
+        playerId: player.id,
+        cardId: chosenCardId,
+        xpGained,
+        licenseCode: parcours.license_code,
+        cardMeta: chosenCard,
+      });
+      setCardXpResult({ card: chosenCard, ...result });
+      setPhase("card-xp-result");
+      return;
+    }
+
+    setPhase("victory");
+  }
+
+  function handleCardXpContinue() {
     setPhase("victory");
   }
 
@@ -389,13 +404,14 @@ export default function Play() {
     setErrorsSinceSuspend(0);
     setCollectionOpen(false);
     setCodeError(null);
+    setCardUniverseSlug("");
+    setAvailableCards([]);
+    setPlayerCardLevels({});
+    setChosenCardId(null);
+    setCardXpResult(null);
   }
 
   const currentEntry = sequence[stepIndex];
-  // N'affiche le champ "code personnel" (et ne crée de compte joueur) que
-  // si ce parcours contient au moins une devinette à Carte Personnage —
-  // sinon la notion de collection n'a aucun sens ici.
-  const hasCollectibleCards = sequence.some((e) => e.kind === "riddle" && e.data?.has_character_card);
   const currentStop = currentEntry?.kind === "stop" ? currentEntry.data : null;
   const currentRiddle = currentEntry?.kind === "riddle" ? currentEntry.data : null;
   const world = getWorld(parcours?.world);
@@ -406,13 +422,6 @@ export default function Play() {
   const ActiveRevealCard = archetype?.RevealCardVariant || RevealCard;
   const ActiveVictoryScreen = archetype?.VictoryScreenVariant || VictoryScreen;
   const totalTimeForVictory = startRef.current ? Math.round((Date.now() - startRef.current) / 1000) : 0;
-  // Une devinette avec photo se révèle exactement comme un objet/lieu/animal :
-  // on construit un "stop" éphémère à partir de la devinette pour réutiliser
-  // tel quel le même ActiveRevealCard (même archétype, même habillage).
-  const revealSubject =
-    currentEntry?.kind === "riddle"
-      ? { displayName: currentRiddle.answer || currentRiddle.question, real_name: "", emoji: "❓", image_url: currentRiddle.image_url }
-      : currentStop;
 
   return (
     // Le World n'est connu qu'une fois le parcours chargé (handleParcoursSelect) ;
@@ -421,15 +430,8 @@ export default function Play() {
     <WorldThemeProvider worldSlug={parcours?.world}>
     <div className="relative min-h-screen overflow-hidden bg-radial-fade">
       <BackgroundComp density={60} />
-      <div className="relative z-10 flex items-center justify-between p-5">
-        <Link to="/" className="flex items-center gap-2 text-muted hover:text-parchment transition-colors">
-          <ArrowLeft size={18} />
-          <MagiQoLogo size={36} spin={false} />
-        </Link>
-        <LanguageSwitcher />
-      </div>
 
-      <div className="relative z-10 px-4 pb-16 flex flex-col items-center">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-10">
         <AnimatePresence mode="wait">
           {phase === "code" && (
             <motion.div key="code" variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full flex flex-col items-center">
@@ -457,6 +459,12 @@ export default function Play() {
             </motion.div>
           )}
 
+          {phase === "choose-card" && (
+            <motion.div key="choose-card" variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full">
+              <ChooseCardScreen cards={availableCards} playerLevels={playerCardLevels} onChoose={handleCardChosen} />
+            </motion.div>
+          )}
+
           {phase === "riddle" && currentRiddle && (
             <motion.div
               key={`riddle-${stepIndex}`}
@@ -474,14 +482,8 @@ export default function Play() {
                 totalSteps={sequence.length}
                 onResolved={handleRiddleResolved}
                 onWrong={handleWrongRiddle}
-                timeLimitSeconds={parcours.riddle_time_limit_seconds || 0}
+                onHintUsed={handleRiddleHintUsed}
               />
-            </motion.div>
-          )}
-
-          {phase === "card-reveal" && currentRiddle && (
-            <motion.div key={`card-${stepIndex}`} variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full">
-              <CommanderCard riddle={currentRiddle} level={cardLevel} status={cardStatus} onContinue={goNextStep} />
             </motion.div>
           )}
 
@@ -517,7 +519,26 @@ export default function Play() {
 
           {phase === "reveal" && currentEntry && (
             <motion.div key={`reveal-${stepIndex}`} variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full">
-              <ActiveRevealCard stop={revealSubject} onContinue={goNextStep} />
+              <ActiveRevealCard
+                stop={
+                  currentEntry.kind === "riddle"
+                    ? { displayName: currentRiddle.answer || currentRiddle.question, real_name: "", emoji: "❓", image_url: currentRiddle.image_url }
+                    : currentStop
+                }
+                onContinue={goNextStep}
+              />
+            </motion.div>
+          )}
+
+          {phase === "card-xp-result" && cardXpResult && (
+            <motion.div key="card-xp-result" variants={phaseVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.35 }} className="w-full">
+              <CardXpResultScreen
+                card={cardXpResult.card}
+                previousLevel={cardXpResult.previousLevel}
+                newLevel={cardXpResult.newLevel}
+                xpGained={cardXpResult.xpGained}
+                onContinue={handleCardXpContinue}
+              />
             </motion.div>
           )}
 
@@ -544,7 +565,6 @@ export default function Play() {
         <CollectionModal
           playerId={player.id}
           playerCode={player.code}
-          licenseCode={parcours?.license_code}
           onClose={() => setCollectionOpen(false)}
         />
       )}

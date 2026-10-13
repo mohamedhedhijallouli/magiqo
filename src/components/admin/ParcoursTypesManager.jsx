@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Pencil, Package, PawPrint, Landmark } from "lucide-react";
-import { ParcoursTypes, subscribe, getAdminActiveLicenseCode } from "@/lib/db";
+import { ParcoursTypes, CardUniverses, subscribe, getAdminActiveLicenseCode } from "@/lib/db";
 import { useLanguage } from "@/lib/LanguageContext";
 import { taxonomyLabel } from "@/lib/utils";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import { Input, Label } from "@/components/ui/Field";
+import { Input, Label, Select } from "@/components/ui/Field";
 import { EmptyState, useConfirm, useToast, Badge } from "@/components/ui/Misc";
 import { cn } from "@/lib/utils";
 
@@ -19,23 +19,26 @@ const KINDS = [
   { value: "place", icon: Landmark, labelKey: "ptm_kind_place", color: "arcane" },
 ];
 
-const EMPTY = { label: "", emoji: "✨", kind: "object" };
+const EMPTY = { label: "", emoji: "✨", kind: "object", card_universe: "" };
 
 export default function ParcoursTypesManager() {
   const { t } = useLanguage();
   const confirm = useConfirm();
   const toast = useToast();
   const [items, setItems] = useState([]);
+  const [universes, setUniverses] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
 
   async function load() {
-    setItems(await ParcoursTypes.filter({ license_code: getAdminActiveLicenseCode() }, "label"));
+    const license_code = getAdminActiveLicenseCode();
+    setItems(await ParcoursTypes.filter({ license_code }, "label"));
+    setUniverses(await CardUniverses.filter({ license_code }));
   }
   useEffect(() => {
     load();
-    return subscribe((name) => name === "parcours_types" && load());
+    return subscribe((name) => (name === "parcours_types" || name === "card_universes") && load());
   }, []);
 
   function openNew() {
@@ -45,7 +48,7 @@ export default function ParcoursTypesManager() {
   }
   function openEdit(item) {
     setEditing(item);
-    setForm({ label: taxonomyLabel(item, t), emoji: item.emoji, kind: item.kind || "object" });
+    setForm({ label: taxonomyLabel(item, t), emoji: item.emoji, kind: item.kind || "object", card_universe: item.card_universe || "" });
     setOpen(true);
   }
 
@@ -56,6 +59,7 @@ export default function ParcoursTypesManager() {
         label_key: null,
         emoji: form.emoji,
         kind: form.kind,
+        card_universe: form.card_universe || "",
       });
     } else {
       await ParcoursTypes.create({
@@ -63,6 +67,7 @@ export default function ParcoursTypesManager() {
         emoji: form.emoji,
         slug: slugify(form.label),
         kind: form.kind,
+        card_universe: form.card_universe || "",
         license_code: getAdminActiveLicenseCode(),
       });
     }
@@ -79,6 +84,10 @@ export default function ParcoursTypesManager() {
 
   function kindMeta(kind) {
     return KINDS.find((k) => k.value === kind) || KINDS[0];
+  }
+  function universeLabel(slug) {
+    const u = universes.find((x) => x.slug === slug);
+    return u ? `${u.emoji} ${taxonomyLabel(u, t)}` : null;
   }
 
   return (
@@ -99,6 +108,7 @@ export default function ParcoursTypesManager() {
           {items.map((it) => {
             const km = kindMeta(it.kind);
             const KIcon = km.icon;
+            const ul = universeLabel(it.card_universe);
             return (
               <div key={it.id} className="flex items-center gap-2 bg-void-panel/60 border border-void-border rounded-xl px-3 py-2 text-sm">
                 <span>{it.emoji}</span>
@@ -106,6 +116,7 @@ export default function ParcoursTypesManager() {
                 <Badge color={km.color} className="ml-1">
                   <KIcon size={11} /> {t(km.labelKey)}
                 </Badge>
+                {ul && <Badge color="gold">🃏 {ul}</Badge>}
                 <button onClick={() => openEdit(it)} className="text-muted hover:text-arcane ml-1">
                   <Pencil size={13} />
                 </button>
@@ -151,6 +162,17 @@ export default function ParcoursTypesManager() {
               </button>
             );
           })}
+        </div>
+
+        <div className="mb-4">
+          <Label>{t("ptm_card_universe")}</Label>
+          <p className="text-xs text-muted mb-2">{t("ptm_card_universe_hint")}</p>
+          <Select value={form.card_universe} onChange={(e) => setForm({ ...form, card_universe: e.target.value })}>
+            <option value="">{t("ptm_card_universe_none")}</option>
+            {universes.map((u) => (
+              <option key={u.slug} value={u.slug}>{u.emoji} {taxonomyLabel(u, t)}</option>
+            ))}
+          </Select>
         </div>
 
         <div className="flex justify-end gap-3">

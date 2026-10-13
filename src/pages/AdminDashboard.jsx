@@ -20,6 +20,8 @@ import PlaceTypesManager from "@/components/admin/PlaceTypesManager";
 import ParcoursTypesManager from "@/components/admin/ParcoursTypesManager";
 import RiddlesManager from "@/components/admin/RiddlesManager";
 import RiddleTypesManager from "@/components/admin/RiddleTypesManager";
+import CardsManager from "@/components/admin/CardsManager";
+import CardUniversesManager from "@/components/admin/CardUniversesManager";
 import TicketsPanel from "@/components/admin/TicketsPanel";
 import SettingsPanel from "@/components/admin/SettingsPanel";
 
@@ -90,6 +92,8 @@ export default function AdminDashboard() {
               { value: "place_types", label: t("admin_tab_place_types"), icon: <Compass size={15} /> },
               { value: "riddles", label: t("admin_tab_riddles"), icon: <HelpCircle size={15} /> },
               { value: "riddle_types", label: t("admin_tab_riddle_types"), icon: <HelpCircle size={15} /> },
+              { value: "cards", label: t("admin_tab_cards"), icon: <span style={{fontSize:15}}>🃏</span> },
+              { value: "card_universes", label: t("admin_tab_card_universes"), icon: <span style={{fontSize:15}}>🌌</span> },
               { value: "tickets", label: t("tix_title"), icon: <Ticket size={15} /> },
               { value: "settings", label: t("admin_tab_settings"), icon: <Settings size={15} /> },
             ]}
@@ -109,6 +113,8 @@ export default function AdminDashboard() {
           {tab === "place_types" && <PlaceTypesManager />}
           {tab === "riddles" && <RiddlesManager />}
           {tab === "riddle_types" && <RiddleTypesManager />}
+          {tab === "cards" && <CardsManager />}
+          {tab === "card_universes" && <CardUniversesManager />}
           {tab === "tickets" && <TicketsPanel />}
           {tab === "settings" && <SettingsPanel />}
         </motion.div>

@@ -1,3 +1,4 @@
+import { cardsExt } from "./i18nCards";
 export const LANGUAGES = [
   { code: "fr", label: "Français", flag: "🇫🇷", dir: "ltr" },
   { code: "en", label: "English", flag: "🇬🇧", dir: "ltr" },
@@ -2822,12 +2823,12 @@ const homeExt = {
 };
 
 export const TRANSLATIONS = {
-  fr: { ...fr, ...frExt, ...taxonomyLabels.fr, ...homeExt.fr },
-  en: { ...en, ...enExt, ...taxonomyLabels.en, ...homeExt.en },
-  es: { ...es, ...esExt, ...taxonomyLabels.es, ...homeExt.es },
-  tn: { ...tn, ...tnExt, ...taxonomyLabels.tn, ...homeExt.tn },
-  zh: { ...zh, ...zhExt, ...taxonomyLabels.zh, ...homeExt.zh },
-  ru: { ...ru, ...taxonomyLabels.ru, ...homeExt.ru },
+  fr: { ...fr, ...frExt, ...taxonomyLabels.fr, ...homeExt.fr, ...cardsExt.fr },
+  en: { ...en, ...enExt, ...taxonomyLabels.en, ...homeExt.en, ...cardsExt.en },
+  es: { ...es, ...esExt, ...taxonomyLabels.es, ...homeExt.es, ...cardsExt.es },
+  tn: { ...tn, ...tnExt, ...taxonomyLabels.tn, ...homeExt.tn, ...cardsExt.tn },
+  zh: { ...zh, ...zhExt, ...taxonomyLabels.zh, ...homeExt.zh, ...cardsExt.zh },
+  ru: { ...ru, ...taxonomyLabels.ru, ...homeExt.ru, ...cardsExt.ru },
 };
 
 

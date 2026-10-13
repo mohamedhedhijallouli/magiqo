@@ -10,25 +10,25 @@ import { cn } from "@/lib/utils";
 
 // Une devinette à la fois — même logique de contrat que ObjectCard/CodeEntry
 // (stepNumber/totalSteps + onResolved), ce qui permet à Play.jsx de mêler
-// librement devinettes et objets/lieux/animaux dans un seul ordre de jeu
-// (voir la séquence combinée choisie dans le Créateur de Parcours). Avant
-// cette version, ce composant recevait TOUT le paquet de devinettes et le
-// jouait en interne d'un bout à l'autre — incompatible avec un ordre
-// entrelacé.
-export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved, onWrong, timeLimitSeconds = 0 }) {
+// librement devinettes et objets/lieux/animaux dans un seul ordre de jeu.
+//
+// Le temps limite et les pénalités appartiennent désormais à CHAQUE
+// devinette (riddle.time_limit_seconds / wrong_penalty_seconds /
+// hint_penalty_seconds — voir RiddleEditor.jsx), plutôt qu'à des réglages
+// globaux du parcours : chaque devinette peut avoir son propre rythme.
+export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved, onWrong, onHintUsed }) {
   const { t } = useLanguage();
   const [value, setValue] = useState("");
   const [feedback, setFeedback] = useState(null); // 'correct' | 'wrong' | 'timeout'
+  const timeLimitSeconds = riddle?.time_limit_seconds || 0;
   const [remaining, setRemaining] = useState(timeLimitSeconds);
   const [hintVisible, setHintVisible] = useState(false);
-  const [wrongCount, setWrongCount] = useState(0);
 
   // Réinitialise l'état à chaque nouvelle devinette (changement d'id).
   useEffect(() => {
     setValue("");
     setFeedback(null);
     setHintVisible(false);
-    setWrongCount(0);
     setRemaining(timeLimitSeconds);
   }, [riddle?.id, timeLimitSeconds]);
 
@@ -36,30 +36,31 @@ export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved,
     if (!timeLimitSeconds || feedback) return;
     if (remaining <= 0) {
       setFeedback("timeout");
-      setTimeout(() => onResolved({ wrongCount, hintUsed: hintVisible, timedOut: true }), 1600);
+      setTimeout(() => onResolved(), 1600);
       return;
     }
     const id = setTimeout(() => setRemaining((r) => r - 1), 1000);
     return () => clearTimeout(id);
-  }, [remaining, timeLimitSeconds, feedback, onResolved, wrongCount, hintVisible]);
+  }, [remaining, timeLimitSeconds, feedback, onResolved]);
 
   if (!riddle) return null;
 
+  function revealHint() {
+    if (hintVisible) return;
+    setHintVisible(true);
+    onHintUsed?.(riddle.hint_penalty_seconds || 0);
+  }
+
   function submitAnswer(given) {
-    // Une devinette peut accepter plusieurs formulations de réponse
-    // ("plusieurs réponses acceptées", §4 du cahier des charges).
+    // Une devinette peut accepter plusieurs formulations de réponse.
     const normalized = given.trim().toLowerCase();
     const acceptedAnswers = [riddle.answer, ...(riddle.alt_answers || [])].filter(Boolean).map((a) => a.trim().toLowerCase());
     const ok = acceptedAnswers.includes(normalized);
     setFeedback(ok ? "correct" : "wrong");
     if (ok) {
-      // wrongCount/hintVisible remontés à l'appelant : ils déterminent le
-      // niveau de la carte Commandant si cette devinette en révèle une —
-      // voir computeCardLevel() dans lib/commanderCardThemes.js.
-      setTimeout(() => onResolved({ wrongCount, hintUsed: hintVisible, timedOut: false }), 900);
+      setTimeout(() => onResolved(), 900);
     } else {
-      setWrongCount((c) => c + 1);
-      onWrong?.();
+      onWrong?.(riddle.wrong_penalty_seconds || 0);
       setTimeout(() => setFeedback(null), 900);
     }
   }
@@ -98,7 +99,7 @@ export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved,
                   <Lightbulb size={13} className="shrink-0 mt-0.5" /> {riddle.hint}
                 </p>
               ) : (
-                <button onClick={() => setHintVisible(true)} className="text-xs text-muted hover:text-gold-bright underline underline-offset-4 flex items-center gap-1">
+                <button onClick={revealHint} className="text-xs text-muted hover:text-gold-bright underline underline-offset-4 flex items-center gap-1">
                   <Lightbulb size={12} /> {t("riddle_show_hint")}
                 </button>
               )}
@@ -165,7 +166,7 @@ export default function RiddleStep({ riddle, stepNumber, totalSteps, onResolved,
               </Button>
             </div>
           )}
-          <button onClick={() => onResolved({ wrongCount, hintUsed: hintVisible, timedOut: false, skipped: true })} className="text-muted text-xs mt-4 hover:text-parchment underline underline-offset-4 mx-auto block">
+          <button onClick={() => onResolved()} className="text-muted text-xs mt-4 hover:text-parchment underline underline-offset-4 mx-auto block">
             {t("riddle_skip")}
           </button>
         </CardContent>
